@@ -1,0 +1,18 @@
+[package]
+name = "arcore_jni"
+version = "0.1.0"
+build = "build.rs"
+authors = ["yangchengjian"]
+
+[build-dependencies]
+bindgen = "0.26.3"
+cc = "1.0"
+
+[dependencies]
+android_injected_glue = "0.2"
+libc = "0.2"
+gleam = "0.4.29"
+serde = "1.0"
+glm = {git = "https://github.com/dche/glm-rs.git", branch = "master"}
+
+jni = { version = "0.5", default-features = false }

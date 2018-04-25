@@ -47,7 +47,6 @@ const K_UVS: [f32; 8] = [
 
 #[derive(Clone, Debug)]
 pub struct BackgroundRenderer {
-    //    pub gl: Rc<gl::Gl>,
     shader_program_: gl::types::GLuint,
     texture_id_: gl::types::GLuint,
     attribute_vertices_: gl::types::GLuint,
@@ -59,7 +58,7 @@ pub struct BackgroundRenderer {
 
 impl BackgroundRenderer {
     pub fn initializel_content(gl: &gl::Gl) -> BackgroundRenderer {
-        write_log("servo_jni::BackgroundRenderer::initializel_content");
+        write_log("arcore_jni::BackgroundRenderer::initializel_content");
         unsafe {
             let shader_program = util::create_program(gl, VS_SRC, FS_SRC);
 
@@ -98,14 +97,15 @@ impl BackgroundRenderer {
     }
 
     pub fn draw(&mut self, gl: &gl::Gl, session: *const ArSession, frame: *const ArFrame) {
-        write_log("servo_jni::BackgroundRenderer::draw");
+        write_log("arcore_jni::BackgroundRenderer::draw");
+
         unsafe {
-            write_log(&format!("self.shader_program_ : {}", self.shader_program_));
-            write_log(&format!("self.texture_id_ : {:?}", self.texture_id_));
-            write_log(&format!("self.uniform_texture_ : {}", self.uniform_texture_));
-            write_log(&format!("self.attribute_vertices_ : {}", self.attribute_vertices_));
-            write_log(&format!("self.attribute_uvs_ : {}", self.attribute_uvs_));
-            write_log(&format!("self.uvs_initialized : {}", self.uvs_initialized_));
+//            write_log(&format!("self.shader_program_ : {}", self.shader_program_));
+//            write_log(&format!("self.texture_id_ : {:?}", self.texture_id_));
+//            write_log(&format!("self.uniform_texture_ : {}", self.uniform_texture_));
+//            write_log(&format!("self.attribute_vertices_ : {}", self.attribute_vertices_));
+//            write_log(&format!("self.attribute_uvs_ : {}", self.attribute_uvs_));
+//            write_log(&format!("self.uvs_initialized : {}", self.uvs_initialized_));
 
             let mut x = 0;
             let geometry_changed: *mut i32 = &mut x;
@@ -122,35 +122,31 @@ impl BackgroundRenderer {
             gl.use_program(self.shader_program_);
             gl.depth_mask(false);
 
-            gl.uniform_1i(self.uniform_texture_ as i32, 0);
-            gl.active_texture(gl::TEXTURE0);
+            gl.uniform_1i(self.uniform_texture_ as i32, 1);
+            gl.active_texture(gl::TEXTURE1);
             gl.bind_texture(gl::TEXTURE_EXTERNAL_OES, self.texture_id_);
 
-//            gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 2, 2, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&PIXELS));
+
+//            gl.enable_vertex_attrib_array(self.attribute_vertices_);
+//            gl.vertex_attrib_pointer_ptr(self.attribute_vertices_, 3, false, 0, K_VERTICES.as_ptr() as *const gl::GLvoid);
+//
+//            gl.enable_vertex_attrib_array(self.attribute_uvs_);
+//            gl.vertex_attrib_pointer_ptr(self.attribute_uvs_, 2, false, 0, self.transformed_uvs_.as_ptr() as *const gl::GLvoid);
+
+
+            let vbo = gl.gen_buffers(2);
+
+            gl.bind_buffer(gl::ARRAY_BUFFER, vbo[0]);
+            gl::buffer_data(gl, gl::ARRAY_BUFFER, &K_VERTICES, gl::STATIC_DRAW);
 
             gl.enable_vertex_attrib_array(self.attribute_vertices_);
-            gl.vertex_attrib_pointer_ptr(self.attribute_vertices_, 3, false, 0, K_VERTICES.as_ptr() as *const gl::GLvoid);
+            gl.vertex_attrib_pointer(self.attribute_vertices_, 3, gl::FLOAT, false, 0, 0);
+
+            gl.bind_buffer(gl::ARRAY_BUFFER, vbo[1]);
+            gl::buffer_data(&*gl, gl::ARRAY_BUFFER, &self.transformed_uvs_, gl::STATIC_DRAW);
 
             gl.enable_vertex_attrib_array(self.attribute_uvs_);
-            gl.vertex_attrib_pointer_ptr(self.attribute_uvs_, 2, false, 0, self.transformed_uvs_.as_ptr() as *const gl::GLvoid);
-
-
-            //            let vbo = gl.gen_buffers(2);
-            //            let vao = gl.gen_vertex_arrays(2);
-            //
-            //            gl.bind_buffer(gl::ARRAY_BUFFER, vbo[0]);
-            //            gl::buffer_data(gl, gl::ARRAY_BUFFER, &K_VERTICES, gl::STATIC_DRAW);
-            //
-            //            gl.bind_vertex_array(vao[0]);
-            //            gl.enable_vertex_attrib_array(self.attribute_vertices_);
-            //            gl.vertex_attrib_pointer(self.attribute_vertices_, 3, gl::FLOAT, false, 0, 0);
-            //
-            //            gl.bind_buffer(gl::ARRAY_BUFFER, vbo[1]);
-            //            gl::buffer_data(&*gl, gl::ARRAY_BUFFER, &self.transformed_uvs_, gl::STATIC_DRAW);
-            //
-            //            gl.bind_vertex_array(vao[1]);
-            //            gl.enable_vertex_attrib_array(self.attribute_uvs_);
-            //            gl.vertex_attrib_pointer(self.attribute_uvs_, 2, gl::FLOAT, false, 0, (3 * ::std::mem::size_of::<f64>()) as gl::GLuint);
+            gl.vertex_attrib_pointer(self.attribute_uvs_, 2, gl::FLOAT, false, 0, 0);
 
             gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
 
@@ -159,8 +155,32 @@ impl BackgroundRenderer {
         }
     }
 
+    pub fn draw_0(&mut self, gl: &gl::Gl, session: *const ArSession, frame: *const ArFrame) {
+        unsafe {
+            gl.use_program(self.shader_program_);
+            gl.depth_mask(false);
+
+            gl.uniform_1i(self.uniform_texture_ as i32, 1);
+            gl.active_texture(gl::TEXTURE1);
+            gl.bind_texture(gl::TEXTURE_2D, self.texture_id_);
+
+            //            gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 2, 2, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&PIXELS));
+
+            gl.enable_vertex_attrib_array(self.attribute_vertices_);
+            gl.vertex_attrib_pointer_ptr(self.attribute_vertices_, 3, false, 0, K_VERTICES.as_ptr() as *const gl::GLvoid);
+
+            gl.enable_vertex_attrib_array(self.attribute_uvs_);
+            gl.vertex_attrib_pointer_ptr(self.attribute_uvs_, 2, false, 0, K_UVS.as_ptr() as *const gl::GLvoid);
+
+
+            gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
+
+            gl.use_program(0);
+            gl.depth_mask(true);
+        }
+    }
     pub fn get_texture_id(&self) -> gl::types::GLuint {
-        write_log("servo_jni::BackgroundRenderer::get_texture_id");
+        write_log("arcore_jni::BackgroundRenderer::get_texture_id");
         self.texture_id_.clone()
     }
 }
