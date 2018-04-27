@@ -35,8 +35,12 @@ pub const kMaxNumberOfAndroidsToRender: usize = 20;
 //    &arcore  as *const _ as jlong
 //}
 
+pub fn log(message: &str) {
+    write_log(message);
+}
+
 pub fn init_jni() -> (*mut JNIEnv, jobject) {
-    write_log("arcore_jni::init_jni");
+    write_log("arcore_jni::lib::init_jni");
 
     use android_injected_glue::Event;
     use android_injected_glue::{add_sender, get_app, write_log};
@@ -70,7 +74,7 @@ pub fn init_jni() -> (*mut JNIEnv, jobject) {
 }
 
 pub fn init_arcore() -> ArCore {
-    write_log("arcore_jni::init_arcore");
+    write_log("arcore_jni::lib::init_arcore");
 
     let (env, context) = init_jni();
     ArCore::new(env, context)
@@ -88,26 +92,26 @@ pub struct ArCore {
     first_plane_has_been_found_: bool,
     plane_count_: i32,
     background_renderer_: Option<background_renderer::BackgroundRenderer>,
-//        point_cloud_renderer_,
+    point_cloud_renderer_: Option<point_cloud_renderer::PointCloudRenderer>,
     plane_renderer_: Option<plane_renderer::PlaneRenderer>,
     tracked_obj_set_: Vec<*mut ArAnchor>,
     plane_color_map_: BTreeMap<*mut ArPlane, ::glm::Vec3>,
     pub view_mat4x4: [f32; 16],
     pub proj_mat4x4: [f32; 16],
     pub mode_mat4x4: [f32; 16],
-    pub mvp: glm::Matrix4<f32>,
+    pub mvp: Vec<f32>,
     pub uniform_mvp_mat_: gl::GLint,
 }
 
 impl ArCore {
     pub fn new(env: *mut JNIEnv, context: jobject) -> ArCore {
-        write_log("arcore_jni::ArCore::new");
+        write_log("arcore_jni::lib::ArCore::new");
 
         unsafe {
             let mut out_session_pointer: *mut ArSession = ::std::ptr::null_mut();
             let mut ar_status_create: ArStatus = ArSession_create(env as *mut ::std::os::raw::c_void, context as *mut ::std::os::raw::c_void, &mut out_session_pointer);
             if ar_status_create != 0 {
-                write_log(&format!("ArSession_create error, ar_status_create = {}", unsafe { ar_status_create }));
+                write_log(&format!("arcore_jni::lib::new ArSession_create error, ar_status_create = {}", unsafe { ar_status_create }));
             }
 
             let mut out_config: *mut ArConfig = ::std::ptr::null_mut();
@@ -115,12 +119,12 @@ impl ArCore {
 
             let mut ar_status_check: ArStatus = ArSession_checkSupported(out_session_pointer as *const ArSession, out_config);
             if ar_status_check != 0 {
-                write_log(&format!("ArSession_checkSupported error, ar_status_check = {}", unsafe { ar_status_check }));
+                write_log(&format!("arcore_jni::lib::new ArSession_checkSupported error, ar_status_check = {}", unsafe { ar_status_check }));
             }
 
             let mut ar_status_configure: ArStatus = ArSession_configure(out_session_pointer, out_config);
             if ar_status_configure != 0 {
-                write_log(&format!("ArSession_configure error, ar_status_configure = {}", unsafe { ar_status_configure }));
+                write_log(&format!("arcore_jni::lib::new ArSession_configure error, ar_status_configure = {}", unsafe { ar_status_configure }));
             }
             ArConfig_destroy(out_config);
 
@@ -131,20 +135,11 @@ impl ArCore {
 
             let mut ar_status_resume: ArStatus = ArSession_resume(out_session_pointer);
             if ar_status_resume != 0 {
-                write_log(&format!("ArSession_resume error, ar_status_resume = {}", unsafe { ar_status_resume }));
+                write_log(&format!("arcore_jni::lib::new ArSession_resume error, ar_status_resume = {}", unsafe { ar_status_resume }));
             }
 
 
             //        cargo apk logcat | grep RustAndroidGlueStdouterr
-
-            let view_mat4x4 = [0.0; 16];
-            let proj_mat4x4 = [0.0; 16];
-            let mode_mat4x4 = [0.0; 16];
-
-            let zero = glm::mat4(0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0);
 
             ArCore {
                 ar_session: out_session_pointer,
@@ -157,25 +152,29 @@ impl ArCore {
                 plane_count_: 0,
                 background_renderer_: None,
                 plane_renderer_: None,
+                point_cloud_renderer_: None,
                 tracked_obj_set_: Vec::new(),
                 plane_color_map_: BTreeMap::new(),
-                view_mat4x4: view_mat4x4,
-                proj_mat4x4: proj_mat4x4,
-                mode_mat4x4: mode_mat4x4,
-                mvp: zero,
+                view_mat4x4: [0.0; 16],
+                proj_mat4x4: [0.0; 16],
+                mode_mat4x4: [0.0; 16],
+                mvp: Vec::new(),
                 uniform_mvp_mat_: -1,
             }
         }
     }
 
     pub fn on_display_changed(&mut self, gl: &gl::Gl, display_rotation: i32, width: i32, height: i32) {
-        write_log(&format!("arcore_jni::ArCore::on_display_changed display_rotation = {}, width = {}, height = {}", display_rotation, width, height));
+        write_log(&format!("arcore_jni::lib::on_display_changed display_rotation = {}, width = {}, height = {}", display_rotation, width, height));
 
-        let bgr = ::background_renderer::BackgroundRenderer::initializel_content(gl.clone());
+        let bgr = ::background_renderer::BackgroundRenderer::initializel_content(gl);
         self.background_renderer_ = Some(bgr.clone());
 
-        let plr = ::plane_renderer::PlaneRenderer::initializel_content(gl.clone());
+        let plr = ::plane_renderer::PlaneRenderer::initializel_content(gl);
         self.plane_renderer_ = Some(plr.clone());
+
+        let pcr = ::point_cloud_renderer::PointCloudRenderer::initializel_content(gl);
+        self.point_cloud_renderer_ = Some(pcr.clone());
 
         //        self.on_touched((width / 2) as f32, (height / 2) as f32);
 
@@ -188,7 +187,7 @@ impl ArCore {
     }
 
     pub fn on_draw(&mut self, gl: &gl::Gl) {
-        write_log("arcore_jni::ArCore::on_draw");
+        write_log("arcore_jni::lib::on_draw");
 
         unsafe {
             //            gl.clear_color(0.9, 0.9, 0.9, 1.0);
@@ -200,7 +199,7 @@ impl ArCore {
             //            gl.blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
 
-            write_log(&format!("arcore_jni::background_renderer_ : {:?}", self.clone().background_renderer_));
+            write_log(&format!("arcore_jni::lib::on_draw background_renderer_ : {:?}", self.clone().background_renderer_));
 
             let mut bgr =
                 match self.clone().background_renderer_ {
@@ -221,7 +220,7 @@ impl ArCore {
 
             let mut ar_status_update: ArStatus = ArSession_update(self.ar_session, self.ar_frame);
             if ar_status_update != 0 {
-                write_log(&format!("ArSession_resume error, ar_status_update = {}", unsafe { ar_status_update }));
+                write_log(&format!("arcore_jni::lib::::on_draw ArSession_resume error, ar_status_update = {}", unsafe { ar_status_update }));
             }
 
             let mut out_camera: *mut ArCamera = ::std::ptr::null_mut();
@@ -235,31 +234,29 @@ impl ArCore {
                                          100.0,
                                          self.proj_mat4x4.as_mut_ptr());
 
-            write_log(&format!("ArCamera_getViewMatrix : {:?}", self.view_mat4x4));
-            write_log(&format!("ArCamera_getProjectionMatrix : {:?}", self.proj_mat4x4));
-            write_log(&format!("ArPose_getMatrix : {:?}", self.mode_mat4x4));
+            write_log(&format!("arcore_jni::lib::on_draw ArCamera_getViewMatrix : {:?}", self.view_mat4x4));
+            write_log(&format!("arcore_jni::lib::on_draw ArCamera_getProjectionMatrix : {:?}", self.proj_mat4x4));
+            write_log(&format!("arcore_jni::lib::on_draw ArPose_getMatrix : {:?}", self.mode_mat4x4));
 
 
             let mut v = glm::mat4(self.view_mat4x4[0], self.view_mat4x4[1], self.view_mat4x4[2], self.view_mat4x4[3],
                                   self.view_mat4x4[4], self.view_mat4x4[5], self.view_mat4x4[6], self.view_mat4x4[7],
-                                  self.view_mat4x4[8], self.view_mat4x4[9], self.view_mat4x4[11], self.view_mat4x4[12],
+                                  self.view_mat4x4[8], self.view_mat4x4[9], self.view_mat4x4[10], self.view_mat4x4[11],
                                   self.view_mat4x4[12], self.view_mat4x4[13], self.view_mat4x4[14], self.view_mat4x4[15]);
 
             let mut p = glm::mat4(self.proj_mat4x4[0], self.proj_mat4x4[1], self.proj_mat4x4[2], self.proj_mat4x4[3],
                                   self.proj_mat4x4[4], self.proj_mat4x4[5], self.proj_mat4x4[6], self.proj_mat4x4[7],
-                                  self.proj_mat4x4[8], self.proj_mat4x4[9], self.proj_mat4x4[11], self.proj_mat4x4[12],
+                                  self.proj_mat4x4[8], self.proj_mat4x4[9], self.proj_mat4x4[10], self.proj_mat4x4[11],
                                   self.proj_mat4x4[12], self.proj_mat4x4[13], self.proj_mat4x4[14], self.proj_mat4x4[15]);
 
             let mut m = glm::mat4(self.mode_mat4x4[0], self.mode_mat4x4[1], self.mode_mat4x4[2], self.mode_mat4x4[3],
                                   self.mode_mat4x4[4], self.mode_mat4x4[5], self.mode_mat4x4[6], self.mode_mat4x4[7],
-                                  self.mode_mat4x4[8], self.mode_mat4x4[9], self.mode_mat4x4[11], self.mode_mat4x4[12],
+                                  self.mode_mat4x4[8], self.mode_mat4x4[9], self.mode_mat4x4[10], self.mode_mat4x4[11],
                                   self.mode_mat4x4[12], self.mode_mat4x4[13], self.mode_mat4x4[14], self.mode_mat4x4[15]);
 
-            self.mvp = m * v * p;
+            let pv = p * v;
 
-            write_log(&format!("arcore_jni::mvp : {:?}", self.mvp));
-
-            let mvp_array_vec4 = self.mvp.as_array();
+            let mvp_array_vec4 = pv.as_array();
 
             let mut mvp_array: Vec<f32> = Vec::new();
 
@@ -268,56 +265,62 @@ impl ArCore {
                     mvp_array.push(mvp_array_vec4[i][j]);
                 }
             }
+            self.mvp = mvp_array;
 
-            write_log(&format!("arcore_jni::mvp_array : {:?}", mvp_array));
+//            write_log(&format!("arcore_jni::lib::on_draw mvp_array : {:?}", mvp_array));
 
 
-            let mut out_tracking_state: ArTrackingState = 0;
-            ArCamera_getTrackingState(self.ar_session, out_camera as *const ArCamera, &mut out_tracking_state as *mut ArTrackingState);
+            let mut camera_tracking_state: ArTrackingState = 0;
+            ArCamera_getTrackingState(self.ar_session, out_camera as *const ArCamera, &mut camera_tracking_state as *mut ArTrackingState);
             ArCamera_release(out_camera);
 
             bgr.draw(gl, self.ar_session as *const ArSession, self.ar_frame as *const ArFrame);
             self.background_renderer_ = Some(bgr);
 
-            //            write_log(&format!("out_tracking_state : {:?}", *out_tracking_state));
+            write_log(&format!("arcore_jni::lib::on_draw camera_tracking_state : {:?}", camera_tracking_state));
 
-            if out_tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
+            if camera_tracking_state != AR_TRACKING_STATE_TRACKING as i32 {
                 return;
             }
 
             //            // Get light estimation value.
-            let mut ar_light_estimate: *mut ArLightEstimate = ::std::ptr::null_mut();
-            let mut ar_light_estimate_state: ArLightEstimateState = AR_LIGHT_ESTIMATE_STATE_NOT_VALID as i32;
-            ArLightEstimate_create(self.ar_session as *const ArSession, &mut ar_light_estimate);
+            //            let mut ar_light_estimate: *mut ArLightEstimate = ::std::ptr::null_mut();
+            //            let mut ar_light_estimate_state: ArLightEstimateState = AR_LIGHT_ESTIMATE_STATE_NOT_VALID as i32;
+            //            ArLightEstimate_create(self.ar_session as *const ArSession, &mut ar_light_estimate);
+            //
+            //            ArFrame_getLightEstimate(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, ar_light_estimate);
+            //            ArLightEstimate_getState(self.ar_session as *const ArSession,
+            //                                     ar_light_estimate as *const ArLightEstimate,
+            //                                     &mut ar_light_estimate_state as *mut ArLightEstimateState);
+            //
+            //            let mut color_correction = [1.0, 1.0, 1.0, 1.0];
+            //            if ar_light_estimate_state == AR_LIGHT_ESTIMATE_STATE_VALID as i32 {
+            //                ArLightEstimate_getColorCorrection(self.ar_session as *const ArSession,
+            //                                                   ar_light_estimate as *const ArLightEstimate,
+            //                                                   color_correction.as_mut_ptr());
+            //            }
+            //            ArLightEstimate_destroy(ar_light_estimate);
+            //            ar_light_estimate = ::std::ptr::null_mut();
 
-            ArFrame_getLightEstimate(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, ar_light_estimate);
-            ArLightEstimate_getState(self.ar_session as *const ArSession,
-                                     ar_light_estimate as *const ArLightEstimate,
-                                     &mut ar_light_estimate_state as *mut ArLightEstimateState);
 
-            let mut color_correction = [1.0, 1.0, 1.0, 1.0];
-            if ar_light_estimate_state == AR_LIGHT_ESTIMATE_STATE_VALID as i32 {
-                ArLightEstimate_getColorCorrection(self.ar_session as *const ArSession,
-                                                   ar_light_estimate as *const ArLightEstimate,
-                                                   color_correction.as_mut_ptr());
-            }
-            ArLightEstimate_destroy(ar_light_estimate);
-            ar_light_estimate = ::std::ptr::null_mut();
+            //            // Render Andy objects.
+            //            for obj_iter in self.tracked_obj_set_.clone() {
+            //                let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
+            //                ArAnchor_getTrackingState(self.ar_session as *const ArSession,
+            //                                          obj_iter as *const ArAnchor,
+            //                                          &mut tracking_state as *mut ArTrackingState);
+            //                if tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
+            //                    util::get_transform_matrix_from_anchor(self.ar_session, obj_iter, self.mode_mat4x4.as_mut_ptr());
+            //                }
+            //            }
 
-            // Render Andy objects.
-            for obj_iter in self.tracked_obj_set_.clone() {
-                let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
-                ArAnchor_getTrackingState(self.ar_session as *const ArSession,
-                                          obj_iter as *const ArAnchor,
-                                          &mut tracking_state as *mut ArTrackingState);
-                if tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
-                    util::get_transform_matrix_from_anchor(self.ar_session, obj_iter, self.mode_mat4x4.as_mut_ptr());
-                }
-            }
 
             // Update and render planes.
             let mut plane_list: *mut ArTrackableList = ::std::ptr::null_mut();
             ArTrackableList_create(self.ar_session as *const ArSession, &mut plane_list);
+            if plane_list == ::std::ptr::null_mut() {
+                write_log("arcore_jni::lib::on_draw plane_list is null");
+            }
 
             let plane_tracked_type: ArTrackableType = AR_TRACKABLE_PLANE as i32;
             ArSession_getAllTrackables(self.ar_session as *const ArSession, plane_tracked_type, plane_list);
@@ -325,8 +328,10 @@ impl ArCore {
             let mut plane_list_size = 0;
             ArTrackableList_getSize(self.ar_session as *const ArSession,
                                     plane_list as *const ArTrackableList,
-                                    plane_list_size as *mut i32);
+                                    &mut plane_list_size as *mut i32);
             self.plane_count_ = plane_list_size;
+
+            write_log(&format!("arcore_jni::lib::on_draw plane_list_size : {:?}", plane_list_size));
 
             for i in 0..plane_list_size {
                 let mut ar_trackable: *mut ArTrackable = ::std::ptr::null_mut();
@@ -335,7 +340,7 @@ impl ArCore {
                                             i,
                                             &mut ar_trackable);
                 let ar_plane: *mut ArPlane = ::std::mem::transmute::<*mut ArTrackable, *mut ArPlane>(ar_trackable);
-                let out_tracking_state: ArTrackingState;
+                let mut out_tracking_state: ArTrackingState = 0;
                 ArTrackable_getTrackingState(self.ar_session as *const ArSession,
                                              ar_trackable as *const ArTrackable,
                                              &mut out_tracking_state as *mut ArTrackingState);
@@ -380,6 +385,28 @@ impl ArCore {
 
             ArTrackableList_destroy(plane_list);
             plane_list = ::std::ptr::null_mut();
+
+
+            // Update and render point cloud.
+            let mut ar_point_cloud: *mut ArPointCloud = ::std::ptr::null_mut();
+            let point_cloud_status = ArFrame_acquirePointCloud(self.ar_session as *const ArSession,
+                                                               self.ar_frame as *const ArFrame,
+                                                               &mut ar_point_cloud);
+            if point_cloud_status == AR_SUCCESS as i32 {
+                let mut pcr =
+                    match self.clone().point_cloud_renderer_ {
+                        Some(p) => {
+                            p
+                        }
+                        None => {
+                            let pcr = ::point_cloud_renderer::PointCloudRenderer::initializel_content(gl);
+                            self.point_cloud_renderer_ = Some(pcr.clone());
+                            pcr
+                        }
+                    };
+                pcr.draw(gl, p * v, self.ar_session, ar_point_cloud);
+                ArPointCloud_release(ar_point_cloud);
+            }
         }
     }
 
@@ -394,7 +421,7 @@ impl ArCore {
                                 x, y,
                                 hit_result_list);
 
-                write_log(&format!("arcore_jni::on_touched x = {}, y = {}", x, y));
+                write_log(&format!("arcore_jni::lib::on_touched x = {}, y = {}", x, y));
 
                 let mut hit_result_list_size = 0;
                 ArHitResultList_getSize(self.ar_session as *const ArSession,
@@ -402,7 +429,7 @@ impl ArCore {
                                         &mut hit_result_list_size as *mut i32);
 
 
-                write_log(&format!("arcore_jni::on_touched hit_result_list_size = {}", hit_result_list_size));
+                write_log(&format!("arcore_jni::lib::on_touched hit_result_list_size = {}", hit_result_list_size));
 
                 let mut ar_hit_result: *mut ArHitResult = ::std::ptr::null_mut();
                 for i in 0..hit_result_list_size {
@@ -415,7 +442,7 @@ impl ArCore {
                                             ar_hit);
 
                     if ar_hit == ::std::ptr::null_mut() {
-                        write_log(&format!("arcore_jni::on_touched ArHitResultList_getItem error"));
+                        write_log(&format!("arcore_jni::lib::on_touched ArHitResultList_getItem error"));
                         return;
                     }
 
@@ -477,7 +504,7 @@ impl ArCore {
                                                                            ar_hit_result,
                                                                            &mut anchor);
                     if ar_status != AR_SUCCESS as i32 {
-                        write_log(&format!("arcore_jni::on_touched ArHitResult_acquireNewAnchor error"));
+                        write_log(&format!("arcore_jni::lib::on_touched ArHitResult_acquireNewAnchor error"));
                         return;
                     }
 
@@ -507,7 +534,7 @@ impl ArCore {
     }
 
     pub fn on_finish(&self) {
-        write_log("arcore_jni::ArCore::on_finish");
+        write_log("arcore_jni::lib::on_finish");
 
         unsafe {
             if self.ar_session != ::std::ptr::null_mut() {

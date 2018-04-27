@@ -58,12 +58,12 @@ pub struct BackgroundRenderer {
 
 impl BackgroundRenderer {
     pub fn initializel_content(gl: &gl::Gl) -> BackgroundRenderer {
-        write_log("arcore_jni::BackgroundRenderer::initializel_content");
+        write_log("arcore_jni::background_renderer::initializel_content");
         unsafe {
             let shader_program = util::create_program(gl, VS_SRC, FS_SRC);
 
             if shader_program == 0 {
-                write_log("Could not create program.");
+                write_log("arcore_jni::background_renderer::initializel_content Could not create program.");
             }
 
             let texture_id = gl.gen_textures(1)[0];
@@ -78,11 +78,11 @@ impl BackgroundRenderer {
 
             let transformed_uvs: [f32; 8] = [0.0; 8];
 
-            write_log(&format!("shader_program : {}", shader_program));
-            write_log(&format!("texture_id : {:?}", texture_id));
-            write_log(&format!("uniform_texture : {}", uniform_texture));
-            write_log(&format!("attribute_vertices : {}", attribute_vertices));
-            write_log(&format!("attribute_uvs : {}", attribute_uvs));
+            write_log(&format!("arcore_jni::background_renderer::initializel_content shader_program : {}", shader_program));
+            write_log(&format!("arcore_jni::background_renderer::initializel_content texture_id : {:?}", texture_id));
+            write_log(&format!("arcore_jni::background_renderer::initializel_content uniform_texture : {}", uniform_texture));
+            write_log(&format!("arcore_jni::background_renderer::initializel_content attribute_vertices : {}", attribute_vertices));
+            write_log(&format!("arcore_jni::background_renderer::initializel_content attribute_uvs : {}", attribute_uvs));
 
             BackgroundRenderer {
                 shader_program_: shader_program,
@@ -97,7 +97,7 @@ impl BackgroundRenderer {
     }
 
     pub fn draw(&mut self, gl: &gl::Gl, session: *const ArSession, frame: *const ArFrame) {
-        write_log("arcore_jni::BackgroundRenderer::draw");
+        write_log("arcore_jni::background_renderer::draw");
 
         unsafe {
 //            write_log(&format!("self.shader_program_ : {}", self.shader_program_));
@@ -111,12 +111,12 @@ impl BackgroundRenderer {
             let geometry_changed: *mut i32 = &mut x;
             ArFrame_getDisplayGeometryChanged(session, frame, geometry_changed);
 
-            write_log(&format!("geometry_changed : {}", *geometry_changed));
+            write_log(&format!("arcore_jni::background_renderer::draw geometry_changed : {}", *geometry_changed));
 
             if (*geometry_changed != 0 || !self.uvs_initialized_) {
                 ArFrame_transformDisplayUvCoords(session, frame, K_NUM_VERTICES * 2, &K_UVS as *const f32, self.transformed_uvs_.as_mut_ptr());
                 self.uvs_initialized_ = true;
-                write_log(&format!("self.uvs_initialized_ : {}", self.uvs_initialized_));
+                write_log(&format!("arcore_jni::background_renderer::draw self.uvs_initialized_ : {}", self.uvs_initialized_));
             }
 
             gl.use_program(self.shader_program_);
@@ -155,32 +155,8 @@ impl BackgroundRenderer {
         }
     }
 
-    pub fn draw_0(&mut self, gl: &gl::Gl, session: *const ArSession, frame: *const ArFrame) {
-        unsafe {
-            gl.use_program(self.shader_program_);
-            gl.depth_mask(false);
-
-            gl.uniform_1i(self.uniform_texture_ as i32, 1);
-            gl.active_texture(gl::TEXTURE1);
-            gl.bind_texture(gl::TEXTURE_2D, self.texture_id_);
-
-            //            gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 2, 2, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&PIXELS));
-
-            gl.enable_vertex_attrib_array(self.attribute_vertices_);
-            gl.vertex_attrib_pointer_ptr(self.attribute_vertices_, 3, false, 0, K_VERTICES.as_ptr() as *const gl::GLvoid);
-
-            gl.enable_vertex_attrib_array(self.attribute_uvs_);
-            gl.vertex_attrib_pointer_ptr(self.attribute_uvs_, 2, false, 0, K_UVS.as_ptr() as *const gl::GLvoid);
-
-
-            gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
-
-            gl.use_program(0);
-            gl.depth_mask(true);
-        }
-    }
     pub fn get_texture_id(&self) -> gl::types::GLuint {
-        write_log("arcore_jni::BackgroundRenderer::get_texture_id");
+        write_log("arcore_jni::background_renderer::get_texture_id");
         self.texture_id_.clone()
     }
 }
