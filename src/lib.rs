@@ -357,16 +357,16 @@ impl ArCore {
                     continue
                 }
 
-//                let plane_tracking_state: ArTrackingState;
-//                ArTrackable_getTrackingState(self.ar_session as *const ArSession,
-//                                             ::std::mem::transmute::<*mut ArPlane, *mut ArTrackable>(ar_plane) as *const ArTrackable,
-//                                             &plane_tracking_state as *mut ArTrackingState);
-//                if plane_tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
-//                    let iter = match self.plane_color_map_.get(ar_plane) {
-//                        Some(x) => x;
-//                        None => ::glm::vec3(0.0, 0.0, 0.0);
-//                    };
-//                }
+                //                let plane_tracking_state: ArTrackingState;
+                //                ArTrackable_getTrackingState(self.ar_session as *const ArSession,
+                //                                             ::std::mem::transmute::<*mut ArPlane, *mut ArTrackable>(ar_plane) as *const ArTrackable,
+                //                                             &plane_tracking_state as *mut ArTrackingState);
+                //                if plane_tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
+                //                    let iter = match self.plane_color_map_.get(ar_plane) {
+                //                        Some(x) => x;
+                //                        None => ::glm::vec3(0.0, 0.0, 0.0);
+                //                    };
+                //                }
 
                 let mut plr =
                     match self.clone().plane_renderer_ {

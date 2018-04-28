@@ -102,8 +102,8 @@ impl PlaneRenderer {
         //        file.read(&mut image);
 
 
-        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 2048 as gl::GLsizei,
-                        2048 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[0, 1]));
+        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 2 as gl::GLsizei,
+                        2 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[0, 1]));
 
         gl.generate_mipmap(gl::TEXTURE_2D);
 
@@ -190,7 +190,7 @@ impl PlaneRenderer {
             self.vertices_.clear();
             self.triangles_.clear();
 
-            let mut polygon_length = 0;
+            let mut polygon_length: i32 = 0;
             ArPlane_getPolygonSize(session, plane, &mut polygon_length as *mut i32);
             if polygon_length == 0 {
                 write_log("arcore_jni::PlaneRenderer::update_for_plane no valid plane polygon is found.");
@@ -200,12 +200,10 @@ impl PlaneRenderer {
 
             write_log(&format!("arcore_jni::PlaneRenderer::update_for_plane polygon_length = {}, vertices_size =  {}", polygon_length, vertices_size));
 
-            let mut raw_vertices_f32: Vec<f32> = Vec::new();
-            raw_vertices_f32.set_len(vertices_size * 2);
+            let mut raw_vertices_f32: Vec<f32> = Vec::with_capacity(polygon_length as usize);
+            raw_vertices_f32.set_len(polygon_length as usize);
 
             ArPlane_getPolygon(session, plane, raw_vertices_f32.as_mut_ptr() as *mut f32);
-
-            write_log("arcore_jni::PlaneRenderer::update_for_plane C");
 
             let mut raw_vertices: Vec<::glm::Vec2> = Vec::new();
             for i in 0..vertices_size {
@@ -213,7 +211,7 @@ impl PlaneRenderer {
             }
 
             for i in 0..vertices_size {
-                self.vertices_.push(::glm::vec3(raw_vertices[i].x, raw_vertices[i].y, 0.0))
+                self.vertices_.push(::glm::vec3(raw_vertices_f32[2 * i], raw_vertices_f32[2 * i + 1], 0.0))
             }
 
             let mut pose: *mut ArPose = ::std::ptr::null_mut();
@@ -222,7 +220,6 @@ impl PlaneRenderer {
             ArPose_getMatrix(session, pose as *const ArPose,
                              self.model_mat_.as_mut_ptr());
 
-            write_log("arcore_jni::PlaneRenderer::update_for_plane D");
 
             // Get plane center in XZ axis.
             let plane_center: ::glm::Vec2 = ::glm::vec2(self.model_mat_[12], self.model_mat_[14]);
