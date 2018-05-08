@@ -50,18 +50,18 @@ pub fn load_shader(gl: &Gl, shader_type: GLenum, shader_source: &[u8]) -> GLuint
         gl.shader_source(shader, &[shader_source]);
         gl.compile_shader(shader);
 
-        let mut compiled = 0;
-        compiled = gl.get_shader_iv(shader, COMPILE_STATUS);
+        let mut compiled = [0];
+        gl.get_shader_iv(shader, COMPILE_STATUS, &mut compiled);
 
-        write_log(&format!("arcore_jni::util::load_shader : compiled = {}", compiled));
+        write_log(&format!("arcore_jni::util::load_shader : compiled = {}", compiled[0]));
 
-        if compiled == 0 {
-            let mut info_len = 0;
-            info_len = gl.get_shader_iv(shader, INFO_LOG_LENGTH);
+        if compiled[0] == 0 {
+            let mut info_len = [0];
+            gl.get_shader_iv(shader, INFO_LOG_LENGTH, &mut info_len);
 
-            write_log(&format!("arcore_jni::util::load_shader : info_len = {}", info_len));
+            write_log(&format!("arcore_jni::util::load_shader : info_len = {}", info_len[0]));
 
-            if info_len == 0 {
+            if info_len[0] == 0 {
                 return shader;
             }
 
@@ -136,12 +136,12 @@ pub fn create_program(gl: &Gl, vertex_source: &[u8], fragment_source: &[u8]) -> 
             gl.attach_shader(program, fragment_shader);
             gl.link_program(program);
 
-            let mut link_status = 0;
-            link_status = gl.get_program_iv(program, LINK_STATUS);
+            let mut link_status = [0];
+            gl.get_program_iv(program, LINK_STATUS, &mut link_status);
 
-            write_log(&format!("arcore_jni::util::create_program : link_status = {}", link_status));
+            write_log(&format!("arcore_jni::util::create_program : link_status = {}", link_status[0]));
 
-            if link_status == 0 {
+            if link_status[0] == 0 {
                 gl.delete_program(program);
                 program = 0;
             }

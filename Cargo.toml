@@ -11,7 +11,7 @@ cc = "1.0"
 [dependencies]
 android_injected_glue = "0.2"
 libc = "0.2"
-gleam = "0.4.29"
+gleam = "0.5"
 serde = "1.0"
 lodepng = "2.0.0"
 rgb = "0.8"
