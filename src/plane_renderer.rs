@@ -6,6 +6,7 @@ use std::path::Path;
 use android_injected_glue::write_log;
 use ffi_arcore::*;
 use gleam::gl;
+use rgb::*;
 use util;
 
 const VS_SRC: &'static [u8] = b"
@@ -93,17 +94,48 @@ impl PlaneRenderer {
         gl.tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
         gl.tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-        //        let path = Path::new("assests/models/trigrid.png");
-        //        let mut file = match File::open(&path) {
-        //            Err(why) => panic!("couldn't open : {}", why.description()),
-        //            Ok(file) => file,
-        //        };
-        //        let mut image = Vec::new();
-        //        file.read(&mut image);
+//        match ::lodepng::decode32_file("assests/models/trigrid.png") {
+//            Ok(image) => {
+//                write_log(&format!("arcore_jni::PlaneRenderer::initializel_content Loaded file , width = {}, height = {}, image = {:?}", image.width, image.height, image));
+//                let image_u8: &[u8] = image.buffer.as_bytes();
+//                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, image.width as gl::GLsizei,
+//                                image.height as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(image_u8))
+//            }
+//            Err(e) => {
+//                write_log(&format!("arcore_jni::PlaneRenderer::initializel_content  Could not load file , because: {}", e));
+//                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
+//                                1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
+//            }
+//        }
 
 
-        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 2 as gl::GLsizei,
-                        2 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[0, 1]));
+//        let path = Path::new("assests/models/trigrid.png");
+//        let mut state = ::lodepng::State::new();
+//        write_log(&format!("arcore_jni::PlaneRenderer::initializel_content path =  {:?}", path));
+//
+//        match state.decode_file(&path) {
+//            Ok(image) =>
+//                match image {
+//                    ::lodepng::Image::RGBA(bitmap) => {
+//                        let image_u8: &[u8] = bitmap.buffer.as_bytes();
+//                        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, bitmap.width as gl::GLsizei,
+//                                        bitmap.height as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(image_u8))
+//                    }
+//                    other => {
+//                        write_log(&format!("arcore_jni::PlaneRenderer::initializel_content  Could not load file , other: {:?}", other));
+//                        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
+//                                        1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
+//                    },
+//                },
+//            Err(e) => {
+//                write_log(&format!("arcore_jni::PlaneRenderer::initializel_content  Could not load file , because: {}", e));
+//                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
+//                                1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
+//            }
+//        };
+
+        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
+                        1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]));
 
         gl.generate_mipmap(gl::TEXTURE_2D);
 

@@ -3,6 +3,8 @@ extern crate android_injected_glue;
 extern crate jni;
 extern crate glm;
 extern crate gleam;
+extern crate lodepng;
+extern crate rgb;
 
 mod ffi_arcore {
     include!(concat!(env!("OUT_DIR"), "/arcore_bindings.rs"));
@@ -99,7 +101,7 @@ pub struct ArCore {
     pub view_mat4x4: [f32; 16],
     pub proj_mat4x4: [f32; 16],
     pub mode_mat4x4: [f32; 16],
-    pub mvp: Vec<f32>,
+    pub pv: Vec<f32>,
     pub uniform_mvp_mat_: gl::GLint,
 }
 
@@ -158,7 +160,7 @@ impl ArCore {
                 view_mat4x4: [0.0; 16],
                 proj_mat4x4: [0.0; 16],
                 mode_mat4x4: [0.0; 16],
-                mvp: Vec::new(),
+                pv: Vec::new(),
                 uniform_mvp_mat_: -1,
             }
         }
@@ -256,16 +258,16 @@ impl ArCore {
 
             let pv = p * v;
 
-            let mvp_array_vec4 = pv.as_array();
+            let pv_array_vec4 = pv.as_array();
 
-            let mut mvp_array: Vec<f32> = Vec::new();
+            let mut pv_array: Vec<f32> = Vec::new();
 
-            for i in 0..mvp_array_vec4.len() {
+            for i in 0..pv_array_vec4.len() {
                 for j in 0..4 {
-                    mvp_array.push(mvp_array_vec4[i][j]);
+                    pv_array.push(pv_array_vec4[i][j]);
                 }
             }
-            self.mvp = mvp_array;
+            self.pv = pv_array;
 
 //            write_log(&format!("arcore_jni::lib::on_draw mvp_array : {:?}", mvp_array));
 

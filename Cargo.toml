@@ -13,6 +13,8 @@ android_injected_glue = "0.2"
 libc = "0.2"
 gleam = "0.4.29"
 serde = "1.0"
+lodepng = "2.0.0"
+rgb = "0.8"
 glm = {git = "https://github.com/dche/glm-rs.git", branch = "master"}
 
 jni = { version = "0.5", default-features = false }
