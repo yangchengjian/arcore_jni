@@ -10,7 +10,7 @@ fn main() {
 
 //    println!("OUT_DIR : {}", env::var("CARGO_PKG_HOMEPAGE").unwrap());
 //    println!("cargo:rustc-link-lib=bz2");
-    println!("cargo:rustc-link-search=native={}", "/Users/yangchengjian");
+    println!("cargo:rustc-link-search=native={}", "jni");
     println!("cargo:rustc-link-lib=dylib=arcore_sdk_c");
 //    println!("cargo:include={}", "/Users/yangchengjian");
 

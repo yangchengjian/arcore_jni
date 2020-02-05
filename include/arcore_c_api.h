@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef THIRD_PARTY_ARCORE_AR_CORE_C_API_ARCORE_C_API_H_
-#define THIRD_PARTY_ARCORE_AR_CORE_C_API_ARCORE_C_API_H_
+#ifndef ARCORE_C_API_H_
+#define ARCORE_C_API_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -33,8 +33,8 @@
 /// - Reference types are owned by ARCore. A reference is acquired by one of the
 ///   @c acquire methods.  For each call to the @c acquire method, the
 ///   application must call the matching @c release method. Note that even if
-///   last reference is released, ARCore may continue to hold a reference to the
-///   object at ARCore's discretion.
+///   the last reference is released, ARCore may continue to hold a reference to
+///   the object at ARCore's discretion.
 ///
 /// Reference types are further split into:
 ///
@@ -86,19 +86,40 @@
 /// beyond the scope of a single rendering frame, either an anchor should be
 /// created or a position relative to a nearby existing anchor should be used.
 
+/// @defgroup common Common Definitions
+/// Shared types and constants
+
 /// @defgroup anchor Anchor
 /// Describes a fixed location and orientation in the real world.
 
 /// @defgroup arcoreapk ArCoreApk
 /// Management of the ARCore service APK
-/// @defgroup session Session
-/// Session management.
+
+/// @defgroup augmented_image AugmentedImage
+/// An image being detected and tracked by ARCore.
+
+/// @defgroup augmented_face AugmentedFace
+/// Describes a face detected by ARCore and provides methods to access
+/// additional center and face region poses as well as face mesh related data.
+///
+/// Augmented Faces supports front-facing (selfie) camera only, and does not
+/// support attaching anchors nor raycast hit testing. Calling
+/// #ArTrackable_acquireNewAnchor() will return @c AR_ERROR_ILLEGAL_STATE.
+
+/// @defgroup augmented_image_database AugmentedImageDatabase
+/// Database containing a list of images to be detected and tracked by ARCore.
 
 /// @defgroup camera Camera
 /// Provides information about the camera that is used to capture images.
 
+/// @defgroup cloud Cloud Anchors
+/// The cloud state and configuration of an Anchor and the AR Session.
+
 /// @defgroup config Configuration
 /// Session configuration.
+
+/// @defgroup cameraconfig CameraConfig
+/// Camera configuration.
 
 /// @defgroup frame Frame
 /// Per-frame state.
@@ -106,8 +127,12 @@
 /// @defgroup hit HitResult
 /// Defines an intersection between a ray and estimated real-world geometry.
 
-/// @defgroup image ImageMetadata
+/// @defgroup image Image
 /// Provides access to metadata from the camera image capture result.
+
+/// @defgroup intrinsics Intrinsics
+/// Provides information about the physical characteristics of the device
+/// camera.
 
 /// @defgroup light LightEstimate
 /// Holds information about the estimated lighting of the real scene.
@@ -131,9 +156,6 @@
 /// @defgroup trackable Trackable
 /// Something that can be tracked and that Anchors can be attached to.
 
-/// @defgroup common Common Definitions
-/// Shared types and constants
-
 /// @defgroup cpp_helpers C++ helper functions
 
 /// @addtogroup config
@@ -147,10 +169,54 @@ typedef struct ArConfig_ ArConfig;
 
 /// @}
 
+// CameraConfig objects and list.
+
+/// @addtogroup cameraconfig
+/// @{
+
+/// A camera config struct that contains the config supported by
+/// the physical camera obtained from the low level device profiles.
+/// (@ref ownership "value type").
+///
+/// Allocate with ArCameraConfig_create()<br>
+/// Release with ArCameraConfig_destroy()
+typedef struct ArCameraConfig_ ArCameraConfig;
+
+/// A list of camera config (@ref ownership "value type").
+///
+/// Allocate with ArCameraConfigList_create()<br>
+/// Release with ArCameraConfigList_destroy()
+typedef struct ArCameraConfigList_ ArCameraConfigList;
+
+/// @}
+
+// Shared Camera objects definition.
+// Excluded from generated docs (// vs ///) since it's a detail of the Java SDK.
+
+// A shared camera contains methods that require sending Java objects over the
+// c/c++ interface. To avoid using void* and making code clarity that the Java
+// object is being just transmitted we define a new typedef.
+//
+typedef void *ArJavaObject;
+
+// Camera config filters and camera config filters objects.
+
+/// @addtogroup cameraconfigfilter
+/// @{
+
+/// A camera config filter struct contains the filters that are desired
+/// by the application. (@ref ownership "value type").
+///
+/// Allocate with ArCameraConfigFilter_create()<br>
+/// Release with ArCameraConfigFilter_destroy()
+typedef struct ArCameraConfigFilter_ ArCameraConfigFilter;
+
+/// @}
+
 /// @addtogroup session
 /// @{
 
-/// The ArCore session (@ref ownership "value type").
+/// The ARCore session (@ref ownership "value type").
 ///
 /// Create with ArSession_create()<br>
 /// Release with ArSession_destroy()
@@ -180,6 +246,20 @@ typedef struct ArPose_ ArPose;
 /// Acquire with ArFrame_acquireCamera()<br>
 /// Release with ArCamera_release()
 typedef struct ArCamera_ ArCamera;
+
+/// @}
+
+// === Camera intrinstics types and methods ===
+
+/// @addtogroup intrinsics
+/// @{
+
+/// The physical characteristics of a given camera.
+///
+/// Allocate with ArCameraIntrinsics_create()<br>
+/// Populate with ArCamera_getIntrinsics()<br>
+/// Release with ArCameraIntrinsics_destroy()
+typedef struct ArCameraIntrinsics_ ArCameraIntrinsics;
 
 /// @}
 
@@ -236,13 +316,17 @@ typedef struct ArPointCloud_ ArPointCloud;
 /// Release with ArImageMetadata_release()
 typedef struct ArImageMetadata_ ArImageMetadata;
 
-/// Accessing CPU image from the tracking camera (@ref ownership "reference
-/// type, large data").
+/// Accessing CPU image from the camera
+/// (@ref ownership "reference type, large data").
 ///
 /// Acquire with ArFrame_acquireCameraImage()<br>
 /// Convert to NDK AImage with ArImage_getNdkImage()<br>
-/// Release with ArImage_releaseImage()
+/// Release with ArImage_release().
 typedef struct ArImage_ ArImage;
+
+/// Convenient definition for cubemap image storage where it is a fixed size
+/// array of 6 ArImage.
+typedef ArImage *ArImageCubemap[6];
 
 /// Forward declaring the AImage struct from Android NDK, which is used
 /// in ArImage_getNdkImage().
@@ -291,6 +375,56 @@ typedef struct ArPoint_ ArPoint;
 
 /// @}
 
+// Augmented Image
+
+/// @addtogroup augmented_image
+/// @{
+
+/// An image that has been detected and tracked (@ref ownership "reference type,
+/// long-lived").
+///
+/// Trackable type: #AR_TRACKABLE_AUGMENTED_IMAGE <br>
+/// Release with: ArTrackable_release()
+typedef struct ArAugmentedImage_ ArAugmentedImage;
+
+/// @}
+
+// Augmented Faces
+
+/// @addtogroup augmented_face
+/// @{
+
+/// A detected face trackable (@ref ownership "reference type, long-lived").
+///
+/// Trackable type: #AR_TRACKABLE_FACE <br>
+/// Release with: ArTrackable_release()
+typedef struct ArAugmentedFace_ ArAugmentedFace;
+
+/// @}
+
+// Augmented Image Database
+/// @addtogroup augmented_image_database
+/// @{
+
+/// A database of images to be detected and tracked by ARCore (@ref ownership
+/// "value type").
+///
+/// An image database supports up to 1000 images. A database can be generated by
+/// the `arcoreimg` command-line database generation tool provided in the SDK,
+/// or dynamically created at runtime by adding individual images.
+///
+/// Only one image database can be active in a session. Any images in the
+/// currently active image database that have a TRACKING/PAUSED state will
+/// immediately be set to the STOPPED state if a different or null image
+/// database is made active in the current session Config.
+///
+/// Create with ArAugmentedImageDatabase_create() or
+/// ArAugmentedImageDatabase_deserialize()<br>
+/// Release with: ArAugmentedImageDatabase_destroy()
+typedef struct ArAugmentedImageDatabase_ ArAugmentedImageDatabase;
+
+/// @}
+
 // Anchors.
 
 /// @addtogroup anchor
@@ -299,9 +433,13 @@ typedef struct ArPoint_ ArPoint;
 /// A position in space attached to a trackable
 /// (@ref ownership "reference type, long-lived").
 ///
-/// Create with ArSession_acquireNewAnchor() or
-///     ArHitResult_acquireNewAnchor()<br>
-/// Release with ArAnchor_release()
+/// To create a new anchor call ArSession_acquireNewAnchor() or
+///     ArHitResult_acquireNewAnchor().<br>
+/// To have ARCore stop tracking the anchor, call ArAnchor_detach().<br>
+/// To release the memory associated with this anchor reference, call
+/// ArAnchor_release(). Note that this will not cause ARCore to stop tracking
+/// the anchor. Other references to the same anchor acquired through
+/// ArAnchorList_acquireItem() are unaffected.
 typedef struct ArAnchor_ ArAnchor;
 
 /// A list of anchors (@ref ownership "value type").
@@ -311,6 +449,10 @@ typedef struct ArAnchor_ ArAnchor;
 typedef struct ArAnchorList_ ArAnchorList;
 
 /// @}
+
+// Segment3D.
+
+// SurfelList.
 
 // Hit result functionality.
 
@@ -345,7 +487,7 @@ typedef struct ACameraMetadata ACameraMetadata;
 /// These methods expose allowable type conversions as C++ helper functions.
 /// This avoids having to explicitly @c reinterpret_cast in most cases.
 ///
-/// Note: These methods only change the type of a pointer - they do not change
+/// Note: These methods only change the type of a pointer; they do not change
 /// the reference count of the referenced objects.
 ///
 /// Note: There is no runtime checking that casts are correct. Call @ref
@@ -362,6 +504,11 @@ inline ArTrackable *ArAsTrackable(ArPoint *point) {
   return reinterpret_cast<ArTrackable *>(point);
 }
 
+/// Upcasts to ArTrackable
+inline ArTrackable *ArAsTrackable(ArAugmentedImage *augmented_image) {
+  return reinterpret_cast<ArTrackable *>(augmented_image);
+}
+
 /// Downcasts to ArPlane.
 inline ArPlane *ArAsPlane(ArTrackable *trackable) {
   return reinterpret_cast<ArPlane *>(trackable);
@@ -371,7 +518,23 @@ inline ArPlane *ArAsPlane(ArTrackable *trackable) {
 inline ArPoint *ArAsPoint(ArTrackable *trackable) {
   return reinterpret_cast<ArPoint *>(trackable);
 }
-#endif
+
+/// Downcasts to ArAugmentedImage.
+inline ArAugmentedImage *ArAsAugmentedImage(ArTrackable *trackable) {
+  return reinterpret_cast<ArAugmentedImage *>(trackable);
+}
+
+/// Upcasts to ArTrackable
+inline ArTrackable *ArAsTrackable(ArAugmentedFace *face) {
+  return reinterpret_cast<ArTrackable *>(face);
+}
+
+/// Downcasts to ArAugmentedFace
+inline ArAugmentedFace *ArAsFace(ArTrackable *trackable) {
+  return reinterpret_cast<ArAugmentedFace *>(trackable);
+}
+
+#endif  // __cplusplus
 /// @}
 
 // If compiling for C++11, use the 'enum underlying type' feature to enforce
@@ -382,6 +545,13 @@ inline ArPoint *ArAsPoint(ArTrackable *trackable) {
 #define AR_DEFINE_ENUM(_type) \
   typedef int32_t _type;      \
   enum
+#endif
+
+#if defined(__GNUC__) && !defined(AR_DEPRECATED_SUPPRESS)
+#define AR_DEPRECATED(_deprecation_string) \
+  __attribute__((deprecated(_deprecation_string)))
+#else
+#define AR_DEPRECATED(_deprecation_string)
 #endif
 
 /// @ingroup trackable
@@ -398,8 +568,47 @@ AR_DEFINE_ENUM(ArTrackableType){
     /// The ::ArPoint subtype of Trackable.
     AR_TRACKABLE_POINT = 0x41520102,
 
+    /// The ::ArAugmentedImage subtype of Trackable.
+    AR_TRACKABLE_AUGMENTED_IMAGE = 0x41520104,
+
+    /// Trackable type for faces.
+    AR_TRACKABLE_FACE = 0x41520105,
+
     /// An invalid Trackable type.
     AR_TRACKABLE_NOT_VALID = 0};
+
+/// @ingroup session
+/// Feature names for use with ArSession_createWithFeatures()
+///
+/// All currently defined features are mutually compatible.
+AR_DEFINE_ENUM(ArSessionFeature){
+    /// Indicates the end of a features list.  This must be the last entry in
+    /// the
+    /// array passed to ArSession_createWithFeatures().
+    AR_SESSION_FEATURE_END_OF_LIST = 0,
+
+    /// Use the front-facing (selfie) camera. When the front camera is selected,
+    /// ARCore's behavior changes in the following ways:
+    ///
+    /// - The display will be mirrored. Specifically,
+    ///   ArCamera_getProjectionMatrix() will include a horizontal flip in the
+    ///   generated projection matrix and APIs that reason about things in
+    ///   screen
+    ///   space, such as ArFrame_transformCoordinates2d(), will mirror screen
+    ///   coordinates. Open GL apps should consider using \c glFrontFace to
+    ///   render mirrored assets without changing their winding direction.
+    /// - ArCamera_getTrackingState() will always output
+    ///   #AR_TRACKING_STATE_PAUSED.
+    /// - ArFrame_hitTest() will always output an empty list.
+    /// - ArCamera_getDisplayOrientedPose() will always output an identity pose.
+    /// - ArSession_acquireNewAnchor() will always return
+    /// #AR_ERROR_NOT_TRACKING.
+    /// - Planes will never be detected.
+    /// - ArSession_configure() will fail if the supplied configuration requests
+    ///   Cloud Anchors, Augmented Images, or Environmental HDR Light Estimation
+    ///   Mode.
+    AR_SESSION_FEATURE_FRONT_CAMERA = 1,
+};
 
 /// @ingroup common
 /// Return code indicating success or failure of a method.
@@ -407,7 +616,7 @@ AR_DEFINE_ENUM(ArStatus){
     /// The operation was successful.
     AR_SUCCESS = 0,
 
-    /// One of the arguments was invalid, either null or not appropriate for the
+    /// One of the arguments was invalid; either null or not appropriate for the
     /// operation requested.
     AR_ERROR_INVALID_ARGUMENT = -1,
 
@@ -428,39 +637,70 @@ AR_DEFINE_ENUM(ArStatus){
     AR_ERROR_NOT_TRACKING = -5,
 
     /// A texture name was not set by calling ArSession_setCameraTextureName()
-    /// before the first call to ArSession_update()
+    /// before the first call to ArSession_update().
     AR_ERROR_TEXTURE_NOT_SET = -6,
 
     /// An operation required GL context but one was not available.
     AR_ERROR_MISSING_GL_CONTEXT = -7,
 
-    /// The configuration supplied to ArSession_configure() was unsupported.
+    /// The configuration supplied to ArSession_configure() is unsupported.
     /// To avoid this error, ensure that Session_checkSupported() returns true.
     AR_ERROR_UNSUPPORTED_CONFIGURATION = -8,
 
-    /// The android camera permission has not been granted prior to calling
-    /// ArSession_resume()
+    /// The Android camera permission was not granted prior to calling
+    /// ArSession_resume().
     AR_ERROR_CAMERA_PERMISSION_NOT_GRANTED = -9,
 
-    /// Acquire failed because the object being acquired is already released.
+    /// Acquire failed because the object being acquired was already released.
     /// For example, this happens if the application holds an ::ArFrame beyond
-    /// the next call to ArSession_update(), and then tries to acquire its point
-    /// cloud.
+    /// the next call to ArSession_update(), and then tries to acquire its Point
+    /// Cloud.
     AR_ERROR_DEADLINE_EXCEEDED = -10,
 
-    /// There are no available resources to complete the operation.  In cases of
-    /// @c acquire methods returning this error, This can be avoided by
+    /// There are no available resources to complete the operation. In cases of
+    /// @c acquire methods returning this error, this can be avoided by
     /// releasing previously acquired objects before acquiring new ones.
     AR_ERROR_RESOURCE_EXHAUSTED = -11,
 
     /// Acquire failed because the data isn't available yet for the current
-    /// frame. For example, acquire the image metadata may fail with this error
+    /// frame. For example, acquiring image metadata may fail with this error
     /// because the camera hasn't fully started.
     AR_ERROR_NOT_YET_AVAILABLE = -12,
 
-    /// The android camera has been reallocated to a higher priority app or is
-    /// otherwise unavailable.
+    /// The Android camera has been reallocated to a higher priority application
+    /// or is otherwise unavailable.
     AR_ERROR_CAMERA_NOT_AVAILABLE = -13,
+
+    /// The host/resolve function call failed because the Session is not
+    /// configured for Cloud Anchors.
+    AR_ERROR_CLOUD_ANCHORS_NOT_CONFIGURED = -14,
+
+    /// ArSession_configure() failed because the specified configuration
+    /// required the Android INTERNET permission, which the application did not
+    /// have.
+    AR_ERROR_INTERNET_PERMISSION_NOT_GRANTED = -15,
+
+    /// HostCloudAnchor() failed because the anchor is not a type of anchor that
+    /// is currently supported for hosting.
+    AR_ERROR_ANCHOR_NOT_SUPPORTED_FOR_HOSTING = -16,
+
+    /// Attempted to add an image with insufficient quality (e.g., too few
+    /// features) to the image database.
+    AR_ERROR_IMAGE_INSUFFICIENT_QUALITY = -17,
+
+    /// The data passed in for this operation was not in a valid format.
+    AR_ERROR_DATA_INVALID_FORMAT = -18,
+
+    /// The data passed in for this operation is not supported by this version
+    /// of the SDK.
+    AR_ERROR_DATA_UNSUPPORTED_VERSION = -19,
+
+    /// A function has been invoked at an illegal or inappropriate time. A
+    /// message will be printed to logcat with additional details for the
+    /// developer. For example, ArSession_resume() will return this status if
+    /// the camera configuration was changed and there are any unreleased
+    /// images.
+    AR_ERROR_ILLEGAL_STATE = -20,
 
     /// The ARCore APK is not installed on this device.
     AR_UNAVAILABLE_ARCORE_NOT_INSTALLED = -100,
@@ -497,6 +737,101 @@ AR_DEFINE_ENUM(ArTrackingState){
     /// ARCore has stopped tracking this Trackable and will never resume
     /// tracking it.
     AR_TRACKING_STATE_STOPPED = 2};
+
+/// @ingroup common
+/// Describes possible tracking failure reasons of a @c ::ArCamera.
+AR_DEFINE_ENUM(ArTrackingFailureReason){
+    /// Indicates expected motion tracking behavior. Always returned when
+    /// ArCamera_getTrackingState() is #AR_TRACKING_STATE_TRACKING. When
+    /// ArCamera_getTrackingState() is #AR_TRACKING_STATE_PAUSED, indicates that
+    /// the session is initializing normally.
+    AR_TRACKING_FAILURE_REASON_NONE = 0,
+    /// Motion tracking lost due to bad internal state. No specific user action
+    /// is likely to resolve this issue.
+    AR_TRACKING_FAILURE_REASON_BAD_STATE = 1,
+    /// Motion tracking lost due to poor lighting conditions. Ask the user to
+    /// move to a more brightly lit area.
+    AR_TRACKING_FAILURE_REASON_INSUFFICIENT_LIGHT = 2,
+    /// Motion tracking lost due to excessive motion. Ask the user to move the
+    /// device more slowly.
+    AR_TRACKING_FAILURE_REASON_EXCESSIVE_MOTION = 3,
+    /// Motion tracking lost due to insufficient visual features. Ask the user
+    /// to move to a different area and to avoid blank walls and surfaces
+    /// without detail.
+    AR_TRACKING_FAILURE_REASON_INSUFFICIENT_FEATURES = 4,
+    /// Motion tracking paused because the camera is in use by another
+    /// application. Tracking will resume once this app regains priority, or
+    /// once all apps with higher priority have stopped using the camera. Prior
+    /// to ARCore SDK 1.13, AR_TRACKING_FAILURE_REASON_NONE is returned in this
+    /// case instead.
+    AR_TRACKING_FAILURE_REASON_CAMERA_UNAVAILABLE = 5};
+
+/// @ingroup cloud
+/// Describes the current cloud state of an @c Anchor.
+AR_DEFINE_ENUM(ArCloudAnchorState){
+    /// The anchor is purely local. It has never been hosted using
+    /// hostCloudAnchor, and has not been acquired using acquireCloudAnchor.
+    AR_CLOUD_ANCHOR_STATE_NONE = 0,
+
+    /// A hosting/resolving task for the anchor is in progress. Once the task
+    /// completes in the background, the anchor will get a new cloud state after
+    /// the next update() call.
+    AR_CLOUD_ANCHOR_STATE_TASK_IN_PROGRESS = 1,
+
+    /// A hosting/resolving task for this anchor completed successfully.
+    AR_CLOUD_ANCHOR_STATE_SUCCESS = 2,
+
+    /// A hosting/resolving task for this anchor finished with an internal
+    /// error. The app should not attempt to recover from this error.
+    AR_CLOUD_ANCHOR_STATE_ERROR_INTERNAL = -1,
+
+    /// The app cannot communicate with the ARCore Cloud Anchor service because
+    /// of an invalid or unauthorized API key in the manifest, or because there
+    /// was no API key present in the manifest.
+    AR_CLOUD_ANCHOR_STATE_ERROR_NOT_AUTHORIZED = -2,
+
+    AR_CLOUD_ANCHOR_STATE_ERROR_SERVICE_UNAVAILABLE AR_DEPRECATED(
+        "AR_CLOUD_ANCHOR_STATE_ERROR_SERVICE_UNAVAILABLE is deprecated in "
+        "ARCore SDK 1.12. See release notes to learn more.") = -3,
+
+    /// The application has exhausted the request quota allotted to the given
+    /// API key. The developer should request additional quota for the ARCore
+    /// Cloud Anchor service for their API key from the Google Developers
+    /// Console.
+    AR_CLOUD_ANCHOR_STATE_ERROR_RESOURCE_EXHAUSTED = -4,
+
+    /// Hosting failed, because the server could not successfully process the
+    /// dataset for the given anchor. The developer should try again after the
+    /// device has gathered more data from the environment.
+    AR_CLOUD_ANCHOR_STATE_ERROR_HOSTING_DATASET_PROCESSING_FAILED = -5,
+
+    /// Resolving failed, because the ARCore Cloud Anchor service could not find
+    /// the provided cloud anchor ID.
+    AR_CLOUD_ANCHOR_STATE_ERROR_CLOUD_ID_NOT_FOUND = -6,
+
+    AR_CLOUD_ANCHOR_STATE_ERROR_RESOLVING_LOCALIZATION_NO_MATCH AR_DEPRECATED(
+        "AR_CLOUD_ANCHOR_STATE_ERROR_RESOLVING_LOCALIZATION_NO_MATCH is "
+        "deprecated in ARCore SDK 1.12. See release notes to learn more.") = -7,
+
+    /// The anchor could not be resolved because the SDK used to host the anchor
+    /// was newer than and incompatible with the version being used to acquire
+    /// it.
+    AR_CLOUD_ANCHOR_STATE_ERROR_RESOLVING_SDK_VERSION_TOO_OLD = -8,
+
+    /// The Cloud Anchor could not be acquired because the SDK used to host the
+    /// anchor was older than and incompatible with the version being used to
+    /// acquire it.
+    AR_CLOUD_ANCHOR_STATE_ERROR_RESOLVING_SDK_VERSION_TOO_NEW = -9,
+
+    /// The ARCore Cloud Anchor service was unreachable. This can happen for
+    /// a number of reasons. The device might be in airplane mode or does not
+    /// have a working internet connection. The request sent to the server might
+    /// have timed out with no response, or there might be a bad network
+    /// connection, DNS unavailability, firewall issues, or anything else that
+    /// might affect the device's ability to connect to the ARCore Cloud Anchor
+    /// service.
+    AR_CLOUD_ANCHOR_STATE_ERROR_HOSTING_SERVICE_UNAVAILABLE = -10,
+};
 
 /// @ingroup arcoreapk
 /// Describes the current state of ARCore availability on the device.
@@ -559,8 +894,14 @@ AR_DEFINE_ENUM(ArLightEstimationMode){
     /// Lighting estimation is disabled.
     AR_LIGHT_ESTIMATION_MODE_DISABLED = 0,
     /// Lighting estimation is enabled, generating a single-value intensity
-    /// estimate.
-    AR_LIGHT_ESTIMATION_MODE_AMBIENT_INTENSITY = 1};
+    /// estimate and three (R, G, B) color correction values.
+    AR_LIGHT_ESTIMATION_MODE_AMBIENT_INTENSITY = 1,
+    /// Lighting estimation is enabled, generating inferred Environmental HDR
+    /// lighting estimation in linear color space. Note,
+    /// #AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR is not supported when using
+    /// #AR_SESSION_FEATURE_FRONT_CAMERA.
+    AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR = 2,
+};
 
 /// @ingroup config
 /// Select the behavior of the plane detection subsystem.
@@ -568,18 +909,72 @@ AR_DEFINE_ENUM(ArPlaneFindingMode){
     /// Plane detection is disabled.
     AR_PLANE_FINDING_MODE_DISABLED = 0,
     /// Detection of only horizontal planes is enabled.
-    AR_PLANE_FINDING_MODE_HORIZONTAL = 1};
+    AR_PLANE_FINDING_MODE_HORIZONTAL = 1,
+    /// Detection of only vertical planes is enabled.
+    AR_PLANE_FINDING_MODE_VERTICAL = 2,
+    /// Detection of horizontal and vertical planes is enabled.
+    AR_PLANE_FINDING_MODE_HORIZONTAL_AND_VERTICAL = 3};
 
 /// @ingroup config
 /// Selects the behavior of ArSession_update().
 AR_DEFINE_ENUM(ArUpdateMode){
-    /// @c update() will wait until a new camera image is available. On most
+    /// @c update() will wait until a new camera image is available, or until
+    /// the built-in timeout (currently 66ms) is reached. On most
     /// devices the camera is configured to capture 30 frames per second.
+    /// If the camera image does not arrive by the built-in timeout, then
+    /// @c update() will return the most recent ::ArFrame object.
     AR_UPDATE_MODE_BLOCKING = 0,
     /// @c update() will return immediately without blocking. If no new camera
     /// image is available, then @c update() will return the most recent
     /// ::ArFrame object.
-    AR_UPDATE_MODE_LATEST_CAMERA_IMAGE = 1};
+    AR_UPDATE_MODE_LATEST_CAMERA_IMAGE = 1,
+};
+
+/// @ingroup config
+/// Selects the behavior of Augmented Faces subsystem.
+/// Default value is AR_AUGMENTED_FACE_MODE_DISABLED.
+AR_DEFINE_ENUM(ArAugmentedFaceMode){
+    /// Disable augmented face mode.
+    AR_AUGMENTED_FACE_MODE_DISABLED = 0,
+
+    /// Face 3D mesh is enabled. Augmented Faces is currently only
+    /// supported when using the front-facing (selfie) camera. See
+    /// #AR_SESSION_FEATURE_FRONT_CAMERA for details and additional
+    /// restrictions.
+    AR_AUGMENTED_FACE_MODE_MESH3D = 2,
+};
+
+/// @ingroup augmented_image
+/// Defines the current tracking mode for an Augmented Image. To retrieve the
+/// tracking mode for an image use #ArAugmentedImage_getTrackingMethod().
+AR_DEFINE_ENUM(ArAugmentedImageTrackingMethod){
+    /// The Augmented Image is not currently being tracked.
+    AR_AUGMENTED_IMAGE_TRACKING_METHOD_NOT_TRACKING = 0,
+    /// The Augmented Image is currently being tracked using the camera image.
+    AR_AUGMENTED_IMAGE_TRACKING_METHOD_FULL_TRACKING = 1,
+    /// The Augmented Image is currently being tracked based on its last known
+    /// pose, because it can no longer be tracked using the camera image.
+    AR_AUGMENTED_IMAGE_TRACKING_METHOD_LAST_KNOWN_POSE = 2};
+
+/// @ingroup augmented_face
+/// Defines face regions to query the pose for. Left and right are defined
+/// relative to the person that the mesh belongs to. To retrieve the center pose
+/// use #ArAugmentedFace_getCenterPose().
+AR_DEFINE_ENUM(ArAugmentedFaceRegionType){
+    /// The region at the tip of the nose.
+    AR_AUGMENTED_FACE_REGION_NOSE_TIP = 0,
+    /// The region at the detected face's left side of the forehead.
+    AR_AUGMENTED_FACE_REGION_FOREHEAD_LEFT = 1,
+    /// The region at the detected face's right side of the forehead.
+    AR_AUGMENTED_FACE_REGION_FOREHEAD_RIGHT = 2,
+};
+
+/// @ingroup config
+/// Selects the desired behavior of the camera focus subsystem.
+AR_DEFINE_ENUM(ArFocusMode){/// Focus is fixed.
+                            AR_FOCUS_MODE_FIXED = 0,
+                            /// Auto-focus is enabled.
+                            AR_FOCUS_MODE_AUTO = 1};
 
 /// @ingroup plane
 /// Simple summary of the normal vector of a plane, for filtering purposes.
@@ -587,7 +982,9 @@ AR_DEFINE_ENUM(ArPlaneType){
     /// A horizontal plane facing upward (for example a floor or tabletop).
     AR_PLANE_HORIZONTAL_UPWARD_FACING = 0,
     /// A horizontal plane facing downward (for example a ceiling).
-    AR_PLANE_HORIZONTAL_DOWNWARD_FACING = 1};
+    AR_PLANE_HORIZONTAL_DOWNWARD_FACING = 1,
+    /// A vertical plane (for example a wall).
+    AR_PLANE_VERTICAL = 2};
 
 /// @ingroup light
 /// Tracks the validity of a light estimate.
@@ -608,7 +1005,54 @@ AR_DEFINE_ENUM(ArPointOrientationMode){
     /// ArHitResult_getHitPose().
     AR_POINT_ORIENTATION_ESTIMATED_SURFACE_NORMAL = 1};
 
-#undef AR_DEFINE_ENUM
+/// @ingroup cloud
+/// Indicates the cloud configuration of the ::ArSession.
+AR_DEFINE_ENUM(ArCloudAnchorMode){
+    /// Anchor Hosting is disabled. This is the value set in the default
+    /// ::ArConfig.
+    AR_CLOUD_ANCHOR_MODE_DISABLED = 0,
+    /// Anchor Hosting is enabled. Setting this value and calling
+    /// @c ArSession_configure() will require that the application have the
+    /// Android INTERNET permission.
+    AR_CLOUD_ANCHOR_MODE_ENABLED = 1,
+};
+
+/// @ingroup frame
+/// 2d coordinate systems supported by ARCore.
+AR_DEFINE_ENUM(ArCoordinates2dType){
+    /// GPU texture, (x,y) in pixels.
+    AR_COORDINATES_2D_TEXTURE_TEXELS = 0,
+    /// GPU texture coordinates, (s,t) normalized to [0.0f, 1.0f] range.
+    AR_COORDINATES_2D_TEXTURE_NORMALIZED = 1,
+    /// CPU image, (x,y) in pixels.
+    AR_COORDINATES_2D_IMAGE_PIXELS = 2,
+    /// CPU image, (x,y) normalized to [0.0f, 1.0f] range.
+    AR_COORDINATES_2D_IMAGE_NORMALIZED = 3,
+    /// OpenGL Normalized Device Coordinates, display-rotated,
+    /// (x,y) normalized to [-1.0f, 1.0f] range.
+    AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES = 6,
+    /// Android view, display-rotated, (x,y) in pixels.
+    AR_COORDINATES_2D_VIEW = 7,
+    /// Android view, display-rotated, (x,y) normalized to [0.0f, 1.0f] range.
+    AR_COORDINATES_2D_VIEW_NORMALIZED = 8,
+
+};
+
+/// @addtogroup cameraconfig
+/// @{
+
+/// Describes the direction a camera is facing relative to the device.  Used by
+/// ArCameraConfig_getFacingDirection().
+AR_DEFINE_ENUM(ArCameraConfigFacingDirection){
+    /// Camera looks out the back of the device (away from the user).
+    AR_CAMERA_CONFIG_FACING_DIRECTION_BACK = 0,
+    /// Camera looks out the front of the device (towards the user).  To create
+    /// a session using the front-facing (selfie) camera, include
+    /// #AR_SESSION_FEATURE_FRONT_CAMERA in the feature list passed to
+    /// ArSession_createWithFeatures().
+    AR_CAMERA_CONFIG_FACING_DIRECTION_FRONT = 1};
+
+/// @}
 
 #ifdef __cplusplus
 extern "C" {
@@ -625,6 +1069,13 @@ extern "C" {
 /// case it will return immediately with @c out_availability set to
 /// #AR_AVAILABILITY_UNKNOWN_CHECKING.
 ///
+/// For ARCore-required apps (as indicated by the <a
+/// href="https://developers.google.com/ar/develop/c/enable-arcore#ar_required">manifest
+/// meta-data</a>) this method will assume device compatibility and will always
+/// immediately return one of #AR_AVAILABILITY_SUPPORTED_INSTALLED,
+/// #AR_AVAILABILITY_SUPPORTED_APK_TOO_OLD, or
+/// #AR_AVAILABILITY_SUPPORTED_NOT_INSTALLED.
+///
 /// Note: A result #AR_AVAILABILITY_SUPPORTED_INSTALLED only indicates presence
 /// of a suitably versioned ARCore APK. Session creation may still fail if the
 /// ARCore APK has been sideloaded onto an incompatible device.
@@ -632,12 +1083,11 @@ extern "C" {
 /// May be called prior to ArSession_create().
 ///
 /// @param[in] env The application's @c JNIEnv object
-/// @param[in] application_context A @c jobject referencing the application's
-///     Android @c Context.
+/// @param[in] context A @c jobject for an Android @c Context.
 /// @param[out] out_availability A pointer to an ArAvailability to receive
 ///     the result.
 void ArCoreApk_checkAvailability(void *env,
-                                 void *application_context,
+                                 void *context,
                                  ArAvailability *out_availability);
 
 /// Initiates installation of ARCore if needed. When your apllication launches
@@ -650,8 +1100,8 @@ void ArCoreApk_checkAvailability(void *env,
 /// If ARCore is not currently installed or the installed version not
 /// compatible, the function will set @c out_install_status to
 /// #AR_INSTALL_STATUS_INSTALL_REQUESTED and return immediately. Your current
-/// activity will then pause while the user is informed about the requierment of
-/// ARCore and offered the opportunity to install it.
+/// activity will then pause while the user is offered the opportunity to
+/// install it.
 ///
 /// When your activity resumes, you should call this method again, this time
 /// with @c user_requested_install = 0. This will either set
@@ -691,10 +1141,10 @@ void ArCoreApk_checkAvailability(void *env,
 ///     on this device.
 /// - #AR_UNAVAILABLE_USER_DECLINED_INSTALLATION if the user previously declined
 ///     installation.
-//ArStatus ArCoreApk_requestInstall(void *env,
-//                                  void *application_activity,
-//                                  bool user_requested_install,
-//                                  ArInstallStatus *out_install_status);
+ArStatus ArCoreApk_requestInstall(void *env,
+                                  void *application_activity,
+                                  int32_t user_requested_install,
+                                  ArInstallStatus *out_install_status);
 
 /// Initiates installation of ARCore if required, with configurable behavior.
 ///
@@ -737,25 +1187,85 @@ ArStatus ArCoreApk_requestInstallCustom(void *env,
 /// @addtogroup session
 /// @{
 
-/// Attempts to create a new ARCore session.
+/// Creates a new ARCore session.  Prior to calling this function, your app must
+/// check that ARCore is installed by verifying that either:
 ///
-/// This is the entry point of ARCore.  This function MUST be the first ARCore
-/// call made by an application.
+/// - ArCoreApk_requestInstall() or ArCoreApk_requestInstallCustom() returns
+///   #AR_INSTALL_STATUS_INSTALLED, or
+/// - ArCoreApk_checkAvailability() returns
+///   #AR_AVAILABILITY_SUPPORTED_INSTALLED.
+///
+/// This check must be performed prior to creating an ArSession, otherwise
+/// ArSession creation will fail, and subsequent installation or upgrade of
+/// ARCore will require an app restart and might cause Android to kill your app.
 ///
 /// @param[in]  env                 The application's @c JNIEnv object
-/// @param[in]  application_context A @c jobject referencing the application's
-///     Android @c Context
+/// @param[in]  context A @c jobject for an Android @c Context
 /// @param[out] out_session_pointer A pointer to an @c ArSession* to receive
 ///     the address of the newly allocated session.
 /// @return #AR_SUCCESS or any of:
-/// - #AR_UNAVAILABLE_ARCORE_NOT_INSTALLED
-/// - #AR_UNAVAILABLE_DEVICE_NOT_COMPATIBLE
-/// - #AR_UNAVAILABLE_APK_TOO_OLD
-/// - #AR_UNAVAILABLE_SDK_TOO_OLD
-/// - #AR_ERROR_CAMERA_PERMISSION_NOT_GRANTED
+/// - #AR_ERROR_FATAL if an internal error occurred while creating the session.
+///   `adb logcat` may contain useful information.
+/// - #AR_ERROR_CAMERA_PERMISSION_NOT_GRANTED if your app does not have the
+///   [CAMERA](https://developer.android.com/reference/android/Manifest.permission.html#CAMERA)
+///   permission.
+/// - #AR_UNAVAILABLE_ARCORE_NOT_INSTALLED if the ARCore APK is not present.
+///   This can be prevented by the installation check described above.
+/// - #AR_UNAVAILABLE_DEVICE_NOT_COMPATIBLE if the device is not compatible with
+///   ARCore.  If encountered after completing the installation check, this
+///   usually indicates a user has side-loaded ARCore onto an incompatible
+///   device.
+/// - #AR_UNAVAILABLE_APK_TOO_OLD if the installed ARCore APK is too old for the
+///   ARCore SDK with which this application was built. This can be prevented by
+///   the installation check described above.
+/// - #AR_UNAVAILABLE_SDK_TOO_OLD if the ARCore SDK that this app was built with
+///   is too old and no longer supported by the installed ARCore APK.
 ArStatus ArSession_create(void *env,
-                          void *application_context,
+                          void *context,
                           ArSession **out_session_pointer);
+
+/// Creates a new ARCore session requesting additional features.  Prior to
+/// calling this function, your app must check that ARCore is installed by
+/// verifying that either:
+///
+/// - ArCoreApk_requestInstall() or ArCoreApk_requestInstallCustom() returns
+///   #AR_INSTALL_STATUS_INSTALLED, or
+/// - ArCoreApk_checkAvailability() returns
+///   #AR_AVAILABILITY_SUPPORTED_INSTALLED.
+///
+/// This check must be performed prior to creating an ArSession, otherwise
+/// ArSession creation will fail, and subsequent installation or upgrade of
+/// ARCore will require an app restart and might cause Android to kill your app.
+///
+/// @param[in]  env                 The application's @c JNIEnv object
+/// @param[in]  context A @c jobject for an Android @c Context
+/// @param[in]  features            The list of requested features, terminated
+///     by with #AR_SESSION_FEATURE_END_OF_LIST.
+/// @param[out] out_session_pointer A pointer to an @c ArSession* to receive
+///     the address of the newly allocated session.
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_FATAL if an internal error occurred while creating the session.
+///   `adb logcat` may contain useful information.
+/// - #AR_ERROR_CAMERA_PERMISSION_NOT_GRANTED if your app does not have the
+///   [CAMERA](https://developer.android.com/reference/android/Manifest.permission.html#CAMERA)
+///   permission.
+/// - #AR_ERROR_INVALID_ARGUMENT if the requested features are mutually
+///   incompatible.  See #ArSessionFeature for details.
+/// - #AR_UNAVAILABLE_ARCORE_NOT_INSTALLED if the ARCore APK is not present.
+///   This can be prevented by the installation check described above.
+/// - #AR_UNAVAILABLE_DEVICE_NOT_COMPATIBLE if the device is not compatible with
+///   ARCore.  If encountered after completing the installation check, this
+///   usually indicates a user has side-loaded ARCore onto an incompatible
+///   device.
+/// - #AR_UNAVAILABLE_APK_TOO_OLD if the installed ARCore APK is too old for the
+///   ARCore SDK with which this application was built. This can be prevented by
+///   the installation check described above.
+/// - #AR_UNAVAILABLE_SDK_TOO_OLD if the ARCore SDK that this app was built with
+///   is too old and no longer supported by the installed ARCore APK.
+ArStatus ArSession_createWithFeatures(void *env,
+                                      void *context,
+                                      const ArSessionFeature *features,
+                                      ArSession **out_session_pointer);
 
 /// @}
 
@@ -780,8 +1290,8 @@ void ArConfig_getLightEstimationMode(
     const ArConfig *config,
     ArLightEstimationMode *light_estimation_mode);
 
-/// Sets the lighting estimation mode that should be used. See
-/// ::ArLightEstimationMode for available options.
+/// Sets the desired lighting estimation mode. See ::ArLightEstimationMode for
+/// available options.
 void ArConfig_setLightEstimationMode(
     const ArSession *session,
     ArConfig *config,
@@ -793,8 +1303,8 @@ void ArConfig_getPlaneFindingMode(const ArSession *session,
                                   const ArConfig *config,
                                   ArPlaneFindingMode *plane_finding_mode);
 
-/// Sets the plane finding mode that should be used. See
-/// ::ArPlaneFindingMode for available options.
+/// Sets the desired plane finding mode. See ::ArPlaneFindingMode for available
+/// options.
 void ArConfig_setPlaneFindingMode(const ArSession *session,
                                   ArConfig *config,
                                   ArPlaneFindingMode plane_finding_mode);
@@ -811,7 +1321,251 @@ void ArConfig_setUpdateMode(const ArSession *session,
                             ArConfig *config,
                             ArUpdateMode update_mode);
 
+/// Gets the current cloud anchor mode from the ::ArConfig.
+void ArConfig_getCloudAnchorMode(const ArSession *session,
+                                 const ArConfig *config,
+                                 ArCloudAnchorMode *out_cloud_anchor_mode);
+
+/// Sets the desired cloud configuration. See ::ArCloudAnchorMode for available
+/// options.
+void ArConfig_setCloudAnchorMode(const ArSession *session,
+                                 ArConfig *config,
+                                 ArCloudAnchorMode cloud_anchor_mode);
+
+/// Sets the image database in the session configuration.
+///
+/// Any images in the currently active image database that have a
+/// TRACKING/PAUSED state will immediately be set to the STOPPED state if a
+/// different or null image database is set.
+///
+/// This function makes a copy of the image database.
+void ArConfig_setAugmentedImageDatabase(
+    const ArSession *session,
+    ArConfig *config,
+    const ArAugmentedImageDatabase *augmented_image_database);
+
+/// Returns the image database from the session configuration.
+///
+/// This function returns a copy of the internally stored image database.
+void ArConfig_getAugmentedImageDatabase(
+    const ArSession *session,
+    const ArConfig *config,
+    ArAugmentedImageDatabase *out_augmented_image_database);
+
+/// Stores the currently configured augmented face mode into @c
+/// *augmented_face_mode.
+void ArConfig_getAugmentedFaceMode(const ArSession *session,
+                                   const ArConfig *config,
+                                   ArAugmentedFaceMode *augmented_face_mode);
+
+/// Sets the desired face mode. See @c ArAugmentedFaceMode for
+/// available options. Augmented Faces is currently only supported when using
+/// the front-facing (selfie) camera.  See #AR_SESSION_FEATURE_FRONT_CAMERA for
+/// details.
+void ArConfig_setAugmentedFaceMode(const ArSession *session,
+                                   ArConfig *config,
+                                   ArAugmentedFaceMode augmented_face_mode);
+
+/// Sets the desired focus mode. See ::ArFocusMode for available options.
+///
+/// The default focus mode varies by device and camera, and is set to optimize
+/// AR tracking. Currently the default on most ARCore devices and cameras is
+/// AR_FOCUS_MODE_FIXED, although this default might change in the future.
+///
+/// Note, on devices where ARCore does not support auto focus due to the use of
+/// a fixed focus camera, setting AR_FOCUS_MODE_AUTO will be ignored. Similarly,
+/// on devices where tracking requires auto focus, setting AR_FOCUS_MODE_FIXED
+/// will be ignored. See the ARCore supported devices
+/// (https://developers.google.com/ar/discover/supported-devices) page for a
+/// list of affected devices.
+///
+/// To determine whether the configured ARCore camera supports auto focus, check
+/// ACAMERA_LENS_INFO_MINIMUM_FOCUS_DISTANCE, which is 0 for fixed-focus
+/// cameras.
+void ArConfig_setFocusMode(const ArSession *session,
+                           ArConfig *config,
+                           ArFocusMode focus_mode);
+
+/// Stores the currently configured focus mode into @c *focus_mode.
+void ArConfig_getFocusMode(const ArSession *session,
+                           ArConfig *config,
+                           ArFocusMode *focus_mode);
+
 /// @}
+
+// === ArCameraConfigList and ArCameraConfig methods ===
+
+/// @addtogroup cameraconfig
+/// @{
+
+// === ArCameraConfigList methods ===
+
+/// Creates a camera config list object.
+///
+/// @param[in]   session      The ARCore session
+/// @param[out]  out_list     A pointer to an @c ArCameraConfigList* to receive
+///     the address of the newly allocated ArCameraConfigList.
+void ArCameraConfigList_create(const ArSession *session,
+                               ArCameraConfigList **out_list);
+
+/// Releases the memory used by a camera config list object,
+/// along with all the camera config references it holds.
+void ArCameraConfigList_destroy(ArCameraConfigList *list);
+
+/// Retrieves the number of camera configs in this list.
+void ArCameraConfigList_getSize(const ArSession *session,
+                                const ArCameraConfigList *list,
+                                int32_t *out_size);
+
+/// Retrieves the specific camera config based on the position in this list.
+void ArCameraConfigList_getItem(const ArSession *session,
+                                const ArCameraConfigList *list,
+                                int32_t index,
+                                ArCameraConfig *out_camera_config);
+
+// === ArCameraConfig methods ===
+
+/// Creates a camera config object.
+///
+/// @param[in]   session           The ARCore session
+/// @param[out]  out_camera_config A pointer to an @c ArCameraConfig* to receive
+///     the address of the newly allocated ArCameraConfig.
+void ArCameraConfig_create(const ArSession *session,
+                           ArCameraConfig **out_camera_config);
+
+/// Releases the memory used by a camera config object.
+void ArCameraConfig_destroy(ArCameraConfig *camera_config);
+
+/// Obtains the camera image dimensions for the given camera config.
+void ArCameraConfig_getImageDimensions(const ArSession *session,
+                                       const ArCameraConfig *camera_config,
+                                       int32_t *out_width,
+                                       int32_t *out_height);
+
+/// Obtains the texture dimensions for the given camera config.
+void ArCameraConfig_getTextureDimensions(const ArSession *session,
+                                         const ArCameraConfig *camera_config,
+                                         int32_t *out_width,
+                                         int32_t *out_height);
+
+/// Obtains the minimum and maximum camera capture rate in frames per second
+/// (fps) for the current camera config. Actual capture frame rate will vary
+/// within this range, depending on lighting conditions. Frame rates will
+/// generally be lower under poor lighting conditions to accommodate longer
+/// exposure times.
+void ArCameraConfig_getFpsRange(const ArSession *session,
+                                const ArCameraConfig *camera_config,
+                                int32_t *out_min_fps,
+                                int32_t *out_max_fps);
+
+/// Gets the depth sensor usage settings. out_depth_sensor_usage will contain
+/// one of the values from ArCameraConfigDepthSensorUsage enum.
+
+void ArCameraConfig_getDepthSensorUsage(const ArSession *session,
+                                        const ArCameraConfig *camera_config,
+                                        uint32_t *out_depth_sensor_usage);
+
+/// Obtains the camera id for the given camera config which is obtained from the
+/// list of ArCore compatible camera configs.
+void ArCameraConfig_getCameraId(const ArSession *session,
+                                const ArCameraConfig *camera_config,
+                                char **out_camera_id);
+
+/// Obtains the facing direction of the camera selected by this config.
+void ArCameraConfig_getFacingDirection(
+    const ArSession *session,
+    const ArCameraConfig *camera_config,
+    ArCameraConfigFacingDirection *out_facing);
+/// @}
+
+// Camera config filters and camera config filters objects.
+
+/// @addtogroup cameraconfigfilter
+/// @{
+
+/// @}
+
+/// @ingroup cameraconfig
+/// Target camera capture frame rates.
+/// The target frame rate represents the maximum or desired frame rate. Actual
+/// camera capture frame rates can be lower than the target frame rate under low
+/// light conditions in order to accommodate longer exposure times.
+AR_DEFINE_ENUM(ArCameraConfigTargetFps){
+    /// Target 30fps camera capture frame rate.
+    ///
+    /// Available on all ARCore supported devices.
+    ///
+    /// Used as a camera filter, via @c ArCameraConfigFilter_setTargetFps().
+    AR_CAMERA_CONFIG_TARGET_FPS_30 = 0x0001,
+
+    /// Target 60fps camera capture frame rate.
+    ///
+    /// Increases power consumption and may increase app memory usage.
+    ///
+    /// See the ARCore supported devices
+    /// (https://developers.google.com/ar/discover/supported-devices)
+    /// page for a list of devices that currently support 60fps.
+    ///
+    /// Used as a camera filter, via @c ArCameraConfigFilter_setTargetFps().
+    AR_CAMERA_CONFIG_TARGET_FPS_60 = 0x0002,
+};
+
+/// @ingroup cameraconfig
+/// Depth sensor usage.
+AR_DEFINE_ENUM(ArCameraConfigDepthSensorUsage){
+    /// When used as a camera filter, via
+    /// ArCameraConfigFilter_setDepthSensorUsage(), filters for camera
+    /// configs that require a depth sensor to be present on the device, and
+    /// that will be used by ARCore.
+    ///
+    /// See the ARCore supported devices
+    /// (https://developers.google.com/ar/discover/supported-devices)
+    /// page for a list of devices that currently have supported depth sensors.
+    ///
+    /// When returned by ArCameraConfig_getDepthSensorUsage(), indicates
+    /// that a depth sensor is present, and that the camera config will use the
+    /// available depth sensor.
+    AR_CAMERA_CONFIG_DEPTH_SENSOR_USAGE_REQUIRE_AND_USE = 0x0001,
+
+    /// When used as a camera filter, via
+    /// ArCameraConfigFilter_setDepthSensorUsage(), filters for camera configs
+    /// where a depth sensor is not present, or is present but will not be used
+    /// by ARCore.
+    ///
+    /// Most commonly used to filter camera configurations when the app requires
+    /// exclusive access to the depth sensor outside of ARCore, for example to
+    /// support 3D mesh reconstruction. Available on all ARCore supported
+    /// devices.
+    ///
+    /// When returned by ArCameraConfig_getDepthSensorUsage(), indicates that
+    /// the camera config will not use a depth sensor, even if it is present.
+    AR_CAMERA_CONFIG_DEPTH_SENSOR_USAGE_DO_NOT_USE = 0x0002,
+};
+
+// Creates a camera config filters object with default values set for
+// backward compatibility. The caller can update the config filters it
+// wants and then get the matching camera configs.
+void ArCameraConfigFilter_create(const ArSession *session,
+                                 ArCameraConfigFilter **out_filter);
+
+/// Releases memory used by the provided camera config filters object.
+void ArCameraConfigFilter_destroy(ArCameraConfigFilter *filter);
+
+/// Sets the fps filter.
+void ArCameraConfigFilter_setTargetFps(const ArSession *session,
+                                       ArCameraConfigFilter *filter,
+                                       const uint32_t fps_filters);
+
+/// Gets the fps filter state.
+void ArCameraConfigFilter_getTargetFps(const ArSession *session,
+                                       ArCameraConfigFilter *filter,
+                                       uint32_t *out_fps_filters);
+
+/// Sets depth sensor usage filter. Default is to not filter.
+void ArCameraConfigFilter_setDepthSensorUsage(
+    const ArSession *session,
+    ArCameraConfigFilter *filter,
+    uint32_t depth_sensor_usage_filters);
 
 // === ArSession methods ===
 
@@ -819,27 +1573,60 @@ void ArConfig_setUpdateMode(const ArSession *session,
 /// @{
 
 /// Releases resources used by an ARCore session.
+/// This method will take several seconds to complete. To prevent blocking
+/// the main thread, call ArSession_pause() on the main thread, and then call
+/// ArSession_destroy() on a background thread.
+///
 void ArSession_destroy(ArSession *session);
 
-/// Checks if the provided configuration is usable on the this device. If this
-/// method returns #AR_ERROR_UNSUPPORTED_CONFIGURATION, calls to
-/// ArSession_configure(Config) with this configuration will fail.
+/// Before release 1.2.0: Checks if the provided configuration is usable on the
+/// this device. If this method returns #AR_ERROR_UNSUPPORTED_CONFIGURATION,
+/// calls to ArSession_configure(Config) with this configuration will fail.
+///
+/// This function now always returns true. See documentation for each
+/// configuration entry to know which configuration options & combinations are
+/// supported.
 ///
 /// @param[in] session The ARCore session
 /// @param[in] config  The configuration to test
-/// @return #AR_SUCCESS indicating the configuration is supported, or
-///     #AR_ERROR_UNSUPPORTED_CONFIGURATION otherwise.
+/// @return #AR_SUCCESS or:
+///  - #AR_ERROR_INVALID_ARGUMENT if any of the arguments are null.
+/// @deprecated in release 1.2.0. Please refer to the release notes
+/// (<a
+/// href="https://github.com/google-ar/arcore-android-sdk/releases/tag/v1.2.0">release
+/// notes 1.2.0</a>)
+///
 ArStatus ArSession_checkSupported(const ArSession *session,
-                                  const ArConfig *config);
+                                  const ArConfig *config)
+    AR_DEPRECATED(
+        "deprecated in release 1.2.0. Please see function documentation");
 
 /// Configures the session with the given config.
-/// Note: a seession is always initially configured with the default config.
+/// Note: a session is always initially configured with the default config.
 /// This should be called if a configuration different than default is needed.
+///
+/// The following configurations are not supported:
+///
+/// - When using the back-facing camera (default):
+///   - #AR_AUGMENTED_FACE_MODE_MESH3D.
+/// - When using the front-facing (selfie) camera
+///   (#AR_SESSION_FEATURE_FRONT_CAMERA):
+///   - Any config using ArConfig_setAugmentedImageDatabase().
+///   - #AR_CLOUD_ANCHOR_MODE_ENABLED.
+///   - #AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR.
 ///
 /// @return #AR_SUCCESS or any of:
 /// - #AR_ERROR_FATAL
-/// - #AR_ERROR_UNSUPPORTED_CONFIGURATION
+/// - #AR_ERROR_UNSUPPORTED_CONFIGURATION If the configuration is not supported,
+///   see above restrictions
+/// - #AR_ERROR_INTERNET_PERMISSION_NOT_GRANTED
 ArStatus ArSession_configure(ArSession *session, const ArConfig *config);
+
+/// Gets the current config. More specifically, fills the given ArConfig object
+/// with the copy of the configuration most recently set by
+/// ArSession_configure(). Note: if the session was not explicitly configured, a
+/// default configuration is returned (same as ArConfig_create()).
+void ArSession_getConfig(ArSession *session, ArConfig *out_config);
 
 /// Starts or resumes the ARCore Session.
 ///
@@ -847,10 +1634,18 @@ ArStatus ArSession_configure(ArSession *session, const ArConfig *config);
 /// href="https://developer.android.com/reference/android/app/Activity.html#onResume()"
 /// ><tt>Activity.onResume()</tt></a>.
 ///
-/// @returns #AR_SUCCESS or any of:
+/// Note that if the camera configuration has been changed by
+/// ArSession_setCameraConfig() since the last call to ArSession_resume(), all
+/// images previously acquired using ArFrame_acquireCameraImage() must be
+/// released by calling ArImage_release() before calling ArSession_resume().  If
+/// there are open images, ArSession_resume will return AR_ERROR_ILLEGAL_STATE
+/// and the session will not resume.
+///
+/// @return #AR_SUCCESS or any of:
 /// - #AR_ERROR_FATAL
 /// - #AR_ERROR_CAMERA_PERMISSION_NOT_GRANTED
 /// - #AR_ERROR_CAMERA_NOT_AVAILABLE
+/// - #AR_ERROR_ILLEGAL_STATE
 ArStatus ArSession_resume(ArSession *session);
 
 /// Pause the current session. This method will stop the camera feed and release
@@ -860,7 +1655,10 @@ ArStatus ArSession_resume(ArSession *session);
 /// href="https://developer.android.com/reference/android/app/Activity.html#onPause()"
 /// ><tt>Activity.onPause()</tt></a>.
 ///
-/// @returns #AR_SUCCESS or any of:
+/// Note that ARCore might continue consuming substantial computing resources
+/// for up to 10 seconds after calling this method.
+///
+/// @return #AR_SUCCESS or any of:
 /// - #AR_ERROR_FATAL
 ArStatus ArSession_pause(ArSession *session);
 
@@ -894,14 +1692,26 @@ void ArSession_setDisplayGeometry(ArSession *session,
 ///
 /// This call may cause off-screen OpenGL activity. Because of this, to avoid
 /// unnecessary frame buffer flushes and reloads, this call should not be made
-/// in the middle of rendering an frame or offscreen buffer.
+/// in the middle of rendering a frame or offscreen buffer.
 ///
-/// This call may update the pose of all created Anchors and detected Planes.
+/// This call may update the pose of all created anchors and detected planes.
 /// The set of updated objects is accessible through
 /// ArFrame_getUpdatedTrackables().
 ///
-/// This call may block until a new camera frame is available. See
-/// ::ArUpdateMode for details.
+/// @c update() in blocking mode (see ::ArUpdateMode) will wait until a
+/// new camera image is available, or until the built-in timeout
+/// (currently 66ms) is reached.
+/// If the camera image does not arrive by the built-in timeout, then
+/// @c update() will return the most recent ::ArFrame object. For some
+/// applications it may be important to know if a new frame was actually
+/// obtained (for example, to avoid redrawing if the camera did not produce a
+/// new frame). To do that, compare the current frame's timestamp, obtained via
+/// @c ArFrame_getTimestamp, with the previously recorded frame timestamp. If
+/// they are different, this is a new frame.
+///
+/// During startup the camera system may not produce actual images
+/// immediately. In this common case, a frame with timestamp = 0 will be
+/// returned.
 ///
 /// @param[in]    session   The ARCore session
 /// @param[inout] out_frame The Frame object to populate with the updated world
@@ -953,6 +1763,155 @@ void ArSession_getAllTrackables(const ArSession *session,
                                 ArTrackableType filter_type,
                                 ArTrackableList *out_trackable_list);
 
+/// This will create a new cloud anchor using pose and other metadata from
+/// @c anchor.
+///
+/// If the function returns #AR_SUCCESS, the cloud state of @c out_cloud_anchor
+/// will be set to #AR_CLOUD_ANCHOR_STATE_TASK_IN_PROGRESS and the initial pose
+/// will be set to the pose of @c anchor. However, the new @c out_cloud_anchor
+/// is completely independent of @c anchor, and the poses may diverge over time.
+/// If the return value of this function is not #AR_SUCCESS, then
+/// @c out_cloud_anchor will be set to null.
+///
+/// @param[in]    session          The ARCore session
+/// @param[in]    anchor           The anchor to be hosted
+/// @param[inout] out_cloud_anchor The new cloud anchor
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_NOT_TRACKING
+/// - #AR_ERROR_SESSION_PAUSED
+/// - #AR_ERROR_CLOUD_ANCHORS_NOT_CONFIGURED
+/// - #AR_ERROR_RESOURCE_EXHAUSTED
+/// - #AR_ERROR_ANCHOR_NOT_SUPPORTED_FOR_HOSTING
+ArStatus ArSession_hostAndAcquireNewCloudAnchor(ArSession *session,
+                                                const ArAnchor *anchor,
+                                                ArAnchor **out_cloud_anchor);
+
+/// This will create a new cloud anchor, and schedule a resolving task to
+/// resolve the anchor's pose using the given cloud anchor ID.
+///
+/// If this function returns #AR_SUCCESS, the cloud state of @c out_cloud_anchor
+/// will be #AR_CLOUD_ANCHOR_STATE_TASK_IN_PROGRESS, and its tracking state will
+/// be #AR_TRACKING_STATE_PAUSED. This anchor will never start tracking until
+/// its pose has been successfully resolved. If the resolving task ends in an
+/// error, the tracking state will be set to #AR_TRACKING_STATE_STOPPED. If the
+/// return value is not #AR_SUCCESS, then @c out_cloud_anchor will be set to
+/// null.
+///
+/// @param[in]    session          The ARCore session
+/// @param[in]    cloud_anchor_id  The cloud ID of the anchor to be resolved
+/// @param[inout] out_cloud_anchor The new cloud anchor
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_NOT_TRACKING
+/// - #AR_ERROR_SESSION_PAUSED
+/// - #AR_ERROR_CLOUD_ANCHORS_NOT_CONFIGURED
+/// - #AR_ERROR_RESOURCE_EXHAUSTED
+ArStatus ArSession_resolveAndAcquireNewCloudAnchor(ArSession *session,
+                                                   const char *cloud_anchor_id,
+                                                   ArAnchor **out_cloud_anchor);
+
+/// Gets a list of camera configs supported by the camera being used by the
+/// session.
+///
+/// Can be called at any time. The provided list populated with the camera
+/// configs supported by the configured session and camera.
+///
+/// Each config will contain a different CPU resolution. The GPU texture
+/// resolutions will be the same in all configs. Most devices provide a GPU
+/// texture resolution of 1920 x 1080, but the actual resolution will vary with
+/// device capabilities.
+///
+/// When the session camera is a back-facing camera:
+/// - The list will always contain three camera configs.
+/// - The CPU image resolutions returned will be VGA, a middle resolution, and a
+///   large resolution matching the GPU texture resolution. The middle
+///   resolution is typically 1280 x 720, but the actual resolution will vary
+///   with device capabilities.
+///
+/// When the session camera is front-facing (selfie) camera, the list will
+/// contain at least one supported camera config.
+///
+/// Notes:
+/// - Prior to ARCore SDK 1.6, the middle CPU image resolution was guaranteed to
+///   be 1280 x 720 on all devices.
+/// - In ARCore SDK 1.7 and 1.8, when the session camera was a front-facing
+///   (selfie) camera, the list contained three identical camera configs.
+///
+/// @param[in]    session          The ARCore session
+/// @param[inout] list             The list to fill. This list must have already
+///      been allocated with ArCameraConfigList_create().  The list is cleared
+///      to remove any existing elements.  Once it is no longer needed, the list
+///      must be destroyed using ArCameraConfigList_destroy() to release
+///      allocated memory.
+/// @deprecated in release 1.11.0. Please use instead: @code
+/// void ArSession_getSupportedCameraConfigsWithFilter(const ArSession* session,
+/// const ArCameraConfigFilter* filter, ArCameraConfigList* list); @endcode
+void ArSession_getSupportedCameraConfigs(const ArSession *session,
+                                         ArCameraConfigList *list)
+    AR_DEPRECATED(
+        "deprecated in release 1.11.0. Please see function documentation.");
+
+/// Sets the ArCameraConfig that the ArSession should use.  Can only be called
+/// while the session is paused.  The provided ArCameraConfig must be one of the
+///  configs returned by ArSession_getSupportedCameraConfigsWithFilter.
+///
+/// The camera config will be applied once the session is resumed.
+/// All previously acquired frame images must be released via ArImage_release
+/// before calling resume(). Failure to do so will cause resume() to return
+/// AR_ERROR_ILLEGAL_STATE error.
+///
+/// Note: Starting in ARCore 1.12, changing the active camera config may cause
+/// the tracking state on certain devices to become permanently PAUSED. For
+/// consistent behavior across all supported devices, release any previously
+/// created anchors and trackables when setting a new camera config.
+///
+/// @param[in]    session          The ARCore session
+/// @param[in]    camera_config    The provided ArCameraConfig must be from a
+///     list returned by ArSession_getSupportedCameraConfigsWithFilter.
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_INVALID_ARGUMENT
+/// - #AR_ERROR_SESSION_NOT_PAUSED
+ArStatus ArSession_setCameraConfig(const ArSession *session,
+                                   const ArCameraConfig *camera_config);
+
+/// Gets the ArCameraConfig that the ArSession is currently using.  If the
+/// camera config was not explicitly set then it returns the default
+/// camera config.  Use ArCameraConfig_destroy to release memory associated with
+/// the returned camera config once it is no longer needed.
+///
+/// @param[in]    session           The ARCore session
+/// @param[inout] out_camera_config The camera config object to fill. This
+///      object must have already been allocated with ArCameraConfig_create().
+///      Use ArCameraConfig_destroy to release memory associated with
+///      out_camera_config once it is no longer needed.
+void ArSession_getCameraConfig(const ArSession *session,
+                               ArCameraConfig *out_camera_config);
+
+/// Enumerates the list of supported camera configs that satisfy the provided
+/// filter settings.
+///
+/// The returned camera configs might vary at runtime depending on device
+/// capabilities. Overly restrictive filtering can result in the returned list
+/// being empty on one or more devices.
+///
+/// Element 0 will contain the camera config that best matches the filter
+/// settings, according to the following priority:
+///
+/// 1. Prefer @c AR_CAMERA_CONFIG_TARGET_FPS_60 over
+///    @c AR_CAMERA_CONFIG_TARGET_FPS_30
+/// 2. Prefer @c AR_CAMERA_CONFIG_DEPTH_SENSOR_USAGE_REQUIRE_AND_USE over
+///    @c AR_CAMERA_CONFIG_DEPTH_SENSOR_USAGE_DO_NOT_USE
+///
+/// No guarantees are made about the order in which the remaining elements are
+/// returned.
+///
+/// Can be called at any time.
+///
+/// @return list of supported camera configs.
+void ArSession_getSupportedCameraConfigsWithFilter(
+    const ArSession *session,
+    const ArCameraConfigFilter *filter,
+    ArCameraConfigList *list);
+
 /// @}
 
 // === ArPose methods ===
@@ -1003,11 +1962,28 @@ void ArPose_getMatrix(const ArSession *session,
 /// @addtogroup camera
 /// @{
 
-/// Sets @c out_pose to the pose of the user's device in the world coordinate
-/// space at the time of capture of the current camera texture. The position and
-/// orientation of the pose follow the device's physical camera (they are not
-/// affected by display orientation) and uses OpenGL camera conventions (+X
-/// right, +Y up, -Z in the direction the camera is looking).
+/// Sets @c out_pose to the pose of the physical camera in world space for the
+/// latest frame. This is an OpenGL camera pose with +X pointing right, +Y
+/// pointing right up, -Z pointing in the direction the camera is looking, with
+/// "right" and "up" being relative to the image readout in the usual
+/// left-to-right top-to-bottom order. Specifically, this is the camera pose at
+/// the center of exposure of the center row of the image.
+///
+/// <b>For applications using the SDK for ARCore 1.5 and earlier</b>, the
+/// returned pose is rotated around the Z axis by a multiple of 90 degrees so
+/// that the axes correspond approximately to those of the <a
+/// href="https://developer.android.com/guide/topics/sensors/sensors_overview#sensors-coords">Android
+/// Sensor Coordinate System</a>.
+///
+/// See Also:
+///
+/// * ArCamera_getDisplayOrientedPose() for the pose of the virtual camera. It
+///   will differ by a local rotation about the Z axis by a multiple of 90
+///   degrees.
+/// * ArFrame_getAndroidSensorPose() for the pose of the Android sensor frame.
+///   It will differ in both orientation and location.
+/// * ArFrame_transformCoordinates2d() to convert viewport coordinates to
+///   texture coordinates.
 ///
 /// Note: This pose is only useful when ArCamera_getTrackingState() returns
 /// #AR_TRACKING_STATE_TRACKING and otherwise should not be used.
@@ -1020,17 +1996,23 @@ void ArCamera_getPose(const ArSession *session,
                       const ArCamera *camera,
                       ArPose *out_pose);
 
-/// Sets @c out_pose to the pose of the user's device in the world coordinate
-/// space at the time of capture of the current camera texture. The position of
-/// the pose is located at the device's camera, while the orientation
-/// approximately matches the orientation of the display (considering display
-/// rotation), using OpenGL camera conventions (+X right, +Y up, -Z in the
-/// direction the camera is looking).
+/// Sets @c out_pose to the virtual camera pose in world space for rendering AR
+/// content onto the latest frame. This is an OpenGL camera pose with +X
+/// pointing right, +Y pointing up, and -Z pointing in the direction the camera
+/// is looking, with "right" and "up" being relative to current logical display
+/// orientation.
+///
+/// See Also:
+///
+/// * ArCamera_getViewMatrix() to conveniently compute the OpenGL View Matrix.
+/// * ArCamera_getPose() for the physical pose of the camera. It will differ by
+///   a local rotation about the Z axis by a multiple of 90 degrees.
+/// * ArFrame_getAndroidSensorPose() for the pose of the android sensor frame.
+///   It will differ in both orientation and location.
+/// * ArSession_setDisplayGeometry() to update the display rotation.
 ///
 /// Note: This pose is only useful when ArCamera_getTrackingState() returns
 /// #AR_TRACKING_STATE_TRACKING and otherwise should not be used.
-///
-/// See also: ArCamera_getViewMatrix()
 ///
 /// @param[in]    session  The ARCore session
 /// @param[in]    camera   The session's camera (retrieved from any frame).
@@ -1041,7 +2023,7 @@ void ArCamera_getDisplayOrientedPose(const ArSession *session,
                                      ArPose *out_pose);
 
 /// Returns the view matrix for the camera for this frame. This matrix performs
-/// the inverse transfrom as the pose provided by
+/// the inverse transform as the pose provided by
 /// ArCamera_getDisplayOrientedPose().
 ///
 /// @param[in]    session           The ARCore session
@@ -1053,16 +2035,40 @@ void ArCamera_getViewMatrix(const ArSession *session,
                             const ArCamera *camera,
                             float *out_col_major_4x4);
 
-/// Gets the current state of the pose of this camera. If this state is anything
-/// other than #AR_TRACKING_STATE_TRACKING the Camera's pose should not be
-/// considered useful.
+/// Gets the current motion tracking state of this camera. If this state is
+/// anything other than #AR_TRACKING_STATE_TRACKING the pose should not be
+/// considered useful. Use ArCamera_getTrackingFailureReason() to determine the
+/// best recommendation to provide to the user to restore motion tracking.
+///
+/// Note: Starting in ARCore 1.12, changing the active camera config using
+/// {@link ArSession_setCameraConfig()} may cause the tracking state on certain
+/// devices to become permanently PAUSED. For consistent behavior across all
+/// supported devices, release any previously created anchors and trackables
+/// when setting a new camera config.
 void ArCamera_getTrackingState(const ArSession *session,
                                const ArCamera *camera,
                                ArTrackingState *out_tracking_state);
 
+/// Gets the reason that ArCamera_getTrackingState() is
+/// #AR_TRACKING_STATE_PAUSED. Note, it returns
+/// ArTrackingFailureReason#AR_TRACKING_FAILURE_REASON_NONE briefly after
+/// ArSession_resume(), while the motion tracking is initializing. Always
+/// returns ArTrackingFailureReason#AR_TRACKING_FAILURE_REASON_NONE when
+/// ArCamera_getTrackingState is #AR_TRACKING_STATE_TRACKING.
+///
+/// If multiple potential causes for motion tracking failure are detected,
+/// this reports the most actionable failure reason.
+void ArCamera_getTrackingFailureReason(
+    const ArSession *session,
+    const ArCamera *camera,
+    ArTrackingFailureReason *out_tracking_failure_reason);
+
 /// Computes a projection matrix for rendering virtual content on top of the
 /// camera image. Note that the projection matrix reflects the current display
 /// geometry and display rotation.
+///
+/// Note: When using #AR_SESSION_FEATURE_FRONT_CAMERA, the returned projection
+/// matrix will incorporate a horizontal flip.
 ///
 /// @param[in]    session            The ARCore session
 /// @param[in]    camera             The session's camera.
@@ -1077,11 +2083,71 @@ void ArCamera_getProjectionMatrix(const ArSession *session,
                                   float far,
                                   float *dest_col_major_4x4);
 
+/// Retrieves the unrotated and uncropped intrinsics for the image (CPU) stream.
+/// The intrinsics may change per frame, so this should be called
+/// on each frame to get the intrinsics for the current frame.
+///
+/// @param[in]    session                The ARCore session
+/// @param[in]    camera                 The session's camera.
+/// @param[inout] out_camera_intrinsics  The camera_intrinsics data.
+void ArCamera_getImageIntrinsics(const ArSession *session,
+                                 const ArCamera *camera,
+                                 ArCameraIntrinsics *out_camera_intrinsics);
+
+/// Retrieves the unrotated and uncropped intrinsics for the texture (GPU)
+/// stream.  The intrinsics may change per frame, so this should be called
+/// on each frame to get the intrinsics for the current frame.
+///
+/// @param[in]    session                The ARCore session
+/// @param[in]    camera                 The session's camera.
+/// @param[inout] out_camera_intrinsics  The camera_intrinsics data.
+void ArCamera_getTextureIntrinsics(const ArSession *session,
+                                   const ArCamera *camera,
+                                   ArCameraIntrinsics *out_camera_intrinsics);
+
 /// Releases a reference to the camera.  This must match a call to
 /// ArFrame_acquireCamera().
 ///
-/// This method may safely be called with @c nullptr - it will do nothing.
+/// This method may safely be called with @c NULL - it will do nothing.
 void ArCamera_release(ArCamera *camera);
+
+/// @}
+
+// === ArCameraIntrinsics methods ===
+/// @addtogroup intrinsics
+/// @{
+
+/// Allocates a camera intrinstics object.
+///
+/// @param[in]    session                The ARCore session
+/// @param[inout] out_camera_intrinsics  The camera_intrinsics data.
+void ArCameraIntrinsics_create(const ArSession *session,
+                               ArCameraIntrinsics **out_camera_intrinsics);
+
+/// Returns the focal length in pixels.
+/// The focal length is conventionally represented in pixels. For a detailed
+/// explanation, please see http://ksimek.github.io/2013/08/13/intrinsic.
+/// Pixels-to-meters conversion can use SENSOR_INFO_PHYSICAL_SIZE and
+/// SENSOR_INFO_PIXEL_ARRAY_SIZE in the Android CameraCharacteristics API.
+void ArCameraIntrinsics_getFocalLength(const ArSession *session,
+                                       const ArCameraIntrinsics *intrinsics,
+                                       float *out_fx,
+                                       float *out_fy);
+
+/// Returns the principal point in pixels.
+void ArCameraIntrinsics_getPrincipalPoint(const ArSession *session,
+                                          const ArCameraIntrinsics *intrinsics,
+                                          float *out_cx,
+                                          float *out_cy);
+
+/// Returns the image's width and height in pixels.
+void ArCameraIntrinsics_getImageDimensions(const ArSession *session,
+                                           const ArCameraIntrinsics *intrinsics,
+                                           int32_t *out_width,
+                                           int32_t *out_height);
+
+/// Releases the provided camera intrinsics object.
+void ArCameraIntrinsics_destroy(ArCameraIntrinsics *camera_intrinsics);
 
 /// @}
 
@@ -1100,7 +2166,7 @@ void ArFrame_destroy(ArFrame *frame);
 
 /// Checks if the display rotation or viewport geometry changed since the
 /// previous call to ArSession_update(). The application should re-query
-/// ArCamera_getProjectionMatrix() and ArFrame_transformDisplayUvCoords()
+/// ArCamera_getProjectionMatrix() and ArFrame_transformCoordinates2d()
 /// whenever this emits non-zero.
 void ArFrame_getDisplayGeometryChanged(const ArSession *session,
                                        const ArFrame *frame,
@@ -1114,6 +2180,31 @@ void ArFrame_getTimestamp(const ArSession *session,
                           const ArFrame *frame,
                           int64_t *out_timestamp_ns);
 
+/// Sets @c out_pose to the pose of the <a
+/// href="https://developer.android.com/guide/topics/sensors/sensors_overview#sensors-coords">Android
+/// Sensor Coordinate System</a> in the world coordinate space for this frame.
+/// The orientation follows the device's "native" orientation (it is not
+/// affected by display rotation) with all axes corresponding to those of the
+/// Android sensor coordinates.
+///
+/// See Also:
+///
+/// * ArCamera_getDisplayOrientedPose() for the pose of the virtual camera.
+/// * ArCamera_getPose() for the pose of the physical camera.
+/// * ArFrame_getTimestamp() for the system time that this pose was estimated
+///   for.
+///
+/// Note: This pose is only useful when ArCamera_getTrackingState() returns
+/// #AR_TRACKING_STATE_TRACKING and otherwise should not be used.
+///
+/// @param[in]    session  The ARCore session
+/// @param[in]    frame    The current frame.
+/// @param[inout] out_pose An already-allocated ArPose object into which the
+///     pose will be stored.
+void ArFrame_getAndroidSensorPose(const ArSession *session,
+                                  const ArFrame *frame,
+                                  ArPose *out_pose);
+
 /// Transform the given texture coordinates to correctly show the background
 /// image. This will account for the display rotation, and any additional
 /// required adjustment. For performance, this function should be called only if
@@ -1126,11 +2217,61 @@ void ArFrame_getTimestamp(const ArSession *session,
 ///     least this many floats.
 /// @param[in]    uvs_in       Input UV coordinates in normalized screen space.
 /// @param[inout] uvs_out      Output UV coordinates in texture coordinates.
+/// @deprecated in release 1.7.0. Please use instead: @code
+/// ArFrame_transformCoordinates2d(session, frame,
+///   AR_COORDINATES_2D_VIEW_NORMALIZED, num_elements, uvs_in,
+///   AR_COORDINATES_2D_TEXTURE_NORMALIZED, uvs_out); @endcode
 void ArFrame_transformDisplayUvCoords(const ArSession *session,
                                       const ArFrame *frame,
                                       int32_t num_elements,
                                       const float *uvs_in,
-                                      float *uvs_out);
+                                      float *uvs_out)
+    AR_DEPRECATED(
+        "deprecated in release 1.7.0. Please see function documentation.");
+
+/// Transforms a list of 2D coordinates from one 2D coordinate system to another
+/// 2D coordinate system.
+///
+/// For Android view coordinates (VIEW, VIEW_NORMALIZED), the view information
+/// is taken from the most recent call to @c ArSession_setDisplayGeometry.
+///
+/// Must be called on the most recently obtained @c ArFrame object. If this
+/// function is called on an older frame, a log message will be printed and
+/// out_vertices_2d will remain unchanged.
+///
+/// Some examples of useful conversions:
+///  - To transform from [0,1] range to screen-quad coordinates for rendering:
+///    VIEW_NORMALIZED -> TEXTURE_NORMALIZED
+///  - To transform from [-1,1] range to screen-quad coordinates for rendering:
+///    OPENGL_NORMALIZED_DEVICE_COORDINATES -> TEXTURE_NORMALIZED
+///  - To transform a point found by a computer vision algorithm in a cpu image
+///    into a point on the screen that can be used to place an Android View
+///    (e.g. Button) at that location:
+///    IMAGE_PIXELS -> VIEW
+///  - To transform a point found by a computer vision algorithm in a CPU image
+///    into a point to be rendered using GL in clip-space ([-1,1] range):
+///    IMAGE_PIXELS -> OPENGL_NORMALIZED_DEVICE_COORDINATES
+///
+/// If inputCoordinates is same as outputCoordinates, the input vertices will be
+/// copied to the output vertices unmodified.
+///
+/// @param[in]  session         The ARCore session.
+/// @param[in]  frame           The current frame.
+/// @param[in]  input_coordinates The coordinate system used by @c vectors2d_in.
+/// @param[in]  number_of_vertices The number of 2D vertices to transform.
+///                             @c vertices_2d and @c out_vertices_2d must
+///                             point to arrays of size at least num_vertices*2.
+/// @param[in] vertices_2d      Input 2D vertices to transform.
+/// @param[in] output_coordinates The coordinate system to convert to.
+/// @param[inout] out_vertices_2d Transformed 2d vertices, can be the same array
+///                             as vertices_2d for in-place transform.
+void ArFrame_transformCoordinates2d(const ArSession *session,
+                                    const ArFrame *frame,
+                                    ArCoordinates2dType input_coordinates,
+                                    int32_t number_of_vertices,
+                                    const float *vertices_2d,
+                                    ArCoordinates2dType output_coordinates,
+                                    float *out_vertices_2d);
 
 /// Performs a ray cast from the user's device in the direction of the given
 /// location in the camera view. Intersections with detected scene geometry are
@@ -1149,12 +2290,17 @@ void ArFrame_transformDisplayUvCoords(const ArSession *session,
 /// Note: If not tracking, the hit_result_list will be empty. <br>
 /// Note: If called on an old frame (not the latest produced by
 ///     ArSession_update() the hit_result_list will be empty).
+/// Note: When using #AR_SESSION_FEATURE_FRONT_CAMERA, the returned hit result
+///     list will always be empty, as the camera is not
+///     #AR_TRACKING_STATE_TRACKING}. Hit testing against tracked faces is not
+///     currently supported.
 ///
 /// @param[in]    session         The ARCore session.
 /// @param[in]    frame           The current frame.
 /// @param[in]    pixel_x         Logical X position within the view, as from an
 ///     Android UI event.
-/// @param[in]    pixel_y         Logical X position within the view.
+/// @param[in]    pixel_y         Logical Y position within the view, as from an
+///     Android UI event.
 /// @param[inout] hit_result_list The list to fill.  This list must have been
 ///     previously allocated using ArHitResultList_create().  If the list has
 ///     been previously used, it will first be cleared.
@@ -1163,6 +2309,24 @@ void ArFrame_hitTest(const ArSession *session,
                      float pixel_x,
                      float pixel_y,
                      ArHitResultList *hit_result_list);
+
+/// Similar to ArFrame_hitTest(), but takes an arbitrary ray in world space
+/// coordinates instead of a screen space point.
+///
+/// @param[in]    session         The ARCore session.
+/// @param[in]    frame           The current frame.
+/// @param[in]    ray_origin_3    A pointer to float[3] array containing ray
+///     origin in world space coordinates.
+/// @param[in]    ray_direction_3 A pointer to float[3] array containing ray
+///     direction in world space coordinates. Does not have to be normalized.
+/// @param[inout] hit_result_list The list to fill.  This list must have been
+///     previously allocated using ArHitResultList_create().  If the list has
+///     been previously used, it will first be cleared.
+void ArFrame_hitTestRay(const ArSession *session,
+                        const ArFrame *frame,
+                        const float *ray_origin_3,
+                        const float *ray_direction_3,
+                        ArHitResultList *hit_result_list);
 
 /// Gets the current ambient light estimate, if light estimation was enabled.
 ///
@@ -1215,6 +2379,24 @@ ArStatus ArFrame_acquireImageMetadata(const ArSession *session,
                                       const ArFrame *frame,
                                       ArImageMetadata **out_metadata);
 
+/// Returns the CPU image for the current frame.
+/// Caller is responsible for later releasing the image with @c
+/// ArImage_release.
+/// Not supported on all devices
+/// (see https://developers.google.com/ar/discover/supported-devices).
+/// Return values:
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_INVALID_ARGUMENT - one more input arguments are invalid.
+/// - #AR_ERROR_DEADLINE_EXCEEDED - the input frame is not the current frame.
+/// - #AR_ERROR_RESOURCE_EXHAUSTED - the caller app has exceeded maximum number
+///   of images that it can hold without releasing.
+/// - #AR_ERROR_NOT_YET_AVAILABLE - image with the timestamp of the input frame
+///   was not found within a bounded amount of time, or the camera failed to
+///   produce the image
+ArStatus ArFrame_acquireCameraImage(ArSession *session,
+                                    ArFrame *frame,
+                                    ArImage **out_image);
+
 /// Gets the set of anchors that were changed by the ArSession_update() that
 /// produced this Frame.
 ///
@@ -1241,6 +2423,9 @@ void ArFrame_getUpdatedTrackables(const ArSession *session,
                                   const ArFrame *frame,
                                   ArTrackableType filter_type,
                                   ArTrackableList *out_trackable_list);
+
+// === Scene Structure methods ===
+
 /// @}
 
 // === ArPointCloud methods ===
@@ -1263,13 +2448,36 @@ void ArPointCloud_getNumberOfPoints(const ArSession *session,
 /// >DEPTH_POINT_CLOUD</a>.
 ///
 /// The pointer returned by this function is valid until ArPointCloud_release()
-/// is called. The application must copy the data if they wish to retain it for
-/// longer. The points are in world coordinates consistent with the frame it was
-/// obtained from. If the number of points is zero, then the value of
-/// @c *out_point_cloud_data should is undefined.
+/// is called. If the number of points is zero, then the value of
+/// @c *out_point_cloud_data is undefined.
+///
+/// If your app needs to keep some point cloud data, for example to compare
+/// point cloud data frame to frame, consider copying just the data points your
+/// app needs, and then calling ArPointCloud_release() to reduce the amount of
+/// memory required.
 void ArPointCloud_getData(const ArSession *session,
                           const ArPointCloud *point_cloud,
                           const float **out_point_cloud_data);
+
+/// Retrieves a pointer to the point cloud point IDs. The number of IDs is the
+/// same as number of points, and is given by
+/// @c ArPointCloud_getNumberOfPoints().
+///
+/// Each point has a unique identifier (within a session) that is persistent
+/// across frames. That is, if a point from point cloud 1 has the same id as the
+/// point from point cloud 2, then it represents the same point in space.
+///
+/// The pointer returned by this function is valid until ArPointCloud_release()
+/// is called. If the number of points is zero, then the value of
+/// @c *out_point_ids is undefined.
+///
+/// If your app needs to keep some point cloud data, for example to compare
+/// point cloud data frame to frame, consider copying just the data points your
+/// app needs, and then calling ArPointCloud_release() to reduce the amount of
+/// memory required.
+void ArPointCloud_getPointIds(const ArSession *session,
+                              const ArPointCloud *point_cloud,
+                              const int32_t **out_point_ids);
 
 /// Returns the timestamp in nanoseconds when this point cloud was observed.
 /// This timestamp uses the same time base as ArFrame_getTimestamp().
@@ -1280,7 +2488,7 @@ void ArPointCloud_getTimestamp(const ArSession *session,
 /// Releases a reference to the point cloud.  This must match a call to
 /// ArFrame_acquirePointCloud().
 ///
-/// This method may safely be called with @c nullptr - it will do nothing.
+/// This method may safely be called with @c NULL - it will do nothing.
 void ArPointCloud_release(ArPointCloud *point_cloud);
 
 /// @}
@@ -1305,30 +2513,136 @@ void ArImageMetadata_getNdkCameraMetadata(
 /// Releases a reference to the metadata.  This must match a call to
 /// ArFrame_acquireImageMetadata().
 ///
-/// This method may safely be called with @c nullptr - it will do nothing.
+/// This method may safely be called with @c NULL - it will do nothing.
 void ArImageMetadata_release(ArImageMetadata *metadata);
 
-// === CPU Image Access types and methods ===
-/// Gets the image of the tracking camera relative to the input session and
-/// frame.
-/// Return values:
-/// @returns #AR_SUCCESS or any of:
-/// - #AR_ERROR_INVALID_ARGUMENT - one more input arguments are invalid.
-/// - #AR_ERROR_DEADLINE_EXCEEDED - the input frame is not the current frame.
-/// - #AR_ERROR_RESOURCE_EXHAUSTED - the caller app has exceeded maximum number
-///   of images that it can hold without releasing.
-/// - #AR_ERROR_NOT_YET_AVAILABLE - image with the timestamp of the input frame
-///   was not found within a bounded amount of time, or the camera failed to
-///   produce the image
-ArStatus ArFrame_acquireCameraImage(ArSession *session,
-                                    ArFrame *frame,
-                                    ArImage **out_image);
+/// Image formats produced by ARCore.
+AR_DEFINE_ENUM(ArImageFormat){
+    /// Invalid image format. Produced by ARCore when an invalid session/image
+    /// is given to @c ArImage_getFormat.
+    AR_IMAGE_FORMAT_INVALID = 0,
 
-/// Converts an ArImage object to an Android NDK AImage object.
-void ArImage_getNdkImage(const ArImage *image, const AImage **out_ndk_image);
+    /// Produced by @c ArFrame_acquireCameraImage().
+    /// See
+    /// https://developer.android.com/reference/android/graphics/ImageFormat.html#YUV_420_888
+    AR_IMAGE_FORMAT_YUV_420_888 = 0x23,
+
+    /// Produced by @c ArLightEstimate_acquireEnvironmentalHdrCubemap().
+    /// See
+    /// https://developer.android.com/ndk/reference/group/media#group___media_1gga9c3dace30485a0f28163a882a5d65a19aa0f5b9a07c9f3dc8a111c0098b18363a
+    AR_IMAGE_FORMAT_RGBA_FP16 = 0x16,
+};
+
+/// Gets the width of the input ArImage.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[inout] out_width              The width of the image in pixels.
+void ArImage_getWidth(const ArSession *session,
+                      const ArImage *image,
+                      int32_t *out_width);
+
+/// Gets the height of the input ArImage.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[inout] out_height             The height of the image in pixels.
+void ArImage_getHeight(const ArSession *session,
+                       const ArImage *image,
+                       int32_t *out_height);
+
+/// Gets the source-specific timestamp of the provided ArImage in nanoseconds.
+/// The timestamp is normally monotonically increasing. The timestamps for the
+/// images from different sources may have different timebases and should not be
+/// compared with each other. The specific meaning and timebase of the returned
+/// timestamp depends on the source providing images.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[inout] out_timestamp_ns       The timestamp of the image in
+/// nanoseconds.
+void ArImage_getTimestamp(const ArSession *session,
+                          const ArImage *image,
+                          int64_t *out_timestamp_ns);
+
+/// Gets the image format of the input ArImage.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[inout] out_format             The image format, one of {@link
+/// ArImageFormat} values.
+void ArImage_getFormat(const ArSession *session,
+                       const ArImage *image,
+                       ArImageFormat *out_format);
+
+/// Gets the number of planes in the input ArImage. The number of planes
+/// and format of data in each plane is format dependent. Use
+/// @c ArImage_getFormat() to determine the format.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[inout] out_num_planes         The number of planes in the image.
+void ArImage_getNumberOfPlanes(const ArSession *session,
+                               const ArImage *image,
+                               int32_t *out_num_planes);
+
+/// Gets the byte distance between the start of two consecutive pixels in
+/// the image. The pixel stride is always greater than 0.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[in]    plane_index            The index of the plane, between 0 and
+/// n-1, where n is number of planes for this image.
+/// @param[inout] out_pixel_stride       The plane stride of the image in bytes.
+void ArImage_getPlanePixelStride(const ArSession *session,
+                                 const ArImage *image,
+                                 int32_t plane_index,
+                                 int32_t *out_pixel_stride);
+
+/// Gets the number of bytes between the start of two consecutive rows of pixels
+/// in the image. The row stride is always greater than 0.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[in]    plane_index            The index of the plane, between 0 and
+/// n-1, where n is number of planes for this image.
+/// @param[inout] out_row_stride         The row stride of the image in bytes.
+void ArImage_getPlaneRowStride(const ArSession *session,
+                               const ArImage *image,
+                               int32_t plane_index,
+                               int32_t *out_row_stride);
+
+/// Gets the data pointer of the input image for direct application access.
+/// Note that once the ArImage data is released via ArImage_release(), the data
+/// pointer from the corresponding ArImage_getPlaneData call becomes invalid.
+/// Do NOT use it after the ArImage is released.
+///
+/// @param[in]    session                The ARCore session.
+/// @param[in]    image                  The ArImage of interest.
+/// @param[in]    plane_index            The index of the plane, between 0 and
+/// n-1, where n is number of planes for this image.
+/// @param[inout] out_data               The data pointer to the image.
+/// @param[inout] out_data_length        The length of data in bytes.
+void ArImage_getPlaneData(const ArSession *session,
+                          const ArImage *image,
+                          int32_t plane_index,
+                          const uint8_t **out_data,
+                          int32_t *out_data_length);
+
+/// Converts an ArImage object to an Android NDK AImage object. The
+/// converted image object format is AIMAGE_FORMAT_YUV_420_888.
+///
+/// @deprecated in release 1.10.0. Please use the other ArImage_* functions to
+/// obtain image data. ARCore can produce a wide variety of images, not all of
+/// which can be represented using Android NDK AImage provided by this function.
+/// In those cases, this method will return @c NULL in out_ndk_image.
+void ArImage_getNdkImage(const ArImage *image, const AImage **out_ndk_image)
+    AR_DEPRECATED(
+        "deprecated in release 1.10.0. Please see function documentation");
 
 /// Releases an instance of ArImage returned by ArFrame_acquireCameraImage().
 void ArImage_release(ArImage *image);
+
 /// @}
 
 // === ArLightEstimate methods ===
@@ -1350,46 +2664,127 @@ void ArLightEstimate_getState(const ArSession *session,
                               const ArLightEstimate *light_estimate,
                               ArLightEstimateState *out_light_estimate_state);
 
-/// Retrieves the pixel intensity, in gamma space, of the current camera view.
-/// Values are in the range (0.0, 1.0), with zero being black and one being
-/// white.
-/// If rendering in gamma space, divide this value by 0.466, which is middle
-/// gray in gamma space, and multiply against the final calculated color after
-/// rendering.
-/// If rendering in linear space, first convert this value to linear space by
-/// rising to the power 2.2. Normalize the result by dividing it by 0.18 which
-/// is middle gray in linear space. Then multiply by the final calculated color
-/// after rendering.
+/// Retrieves the pixel intensity, in gamma color space, of the current camera
+/// view. Values are in the range [0.0, 1.0], with zero being black and one
+/// being white. If AR_LIGHT_ESTIMATION_MODE_AMBIENT_INTENSITY mode is not set,
+/// returns zero.
+///
+/// If rendering in gamma color space, divide this value by 0.466, which is
+/// middle gray in gamma color space, and multiply against the final calculated
+/// color after rendering. If rendering in linear space, first convert this
+/// value to linear space by rising to the power 2.2. Normalize the result by
+/// dividing it by 0.18 which is middle gray in linear space. Then multiply by
+/// the final calculated color after rendering.
 void ArLightEstimate_getPixelIntensity(const ArSession *session,
                                        const ArLightEstimate *light_estimate,
                                        float *out_pixel_intensity);
 
-// Gets the color correction values that are uploaded to the fragment shader.
-// Use the RGB scale factors (components 0-2) to match the color of the light in
-// the scene. Use the pixel intensity (component 3) to match the intensity of
-// the light in the scene.
-// out_color_correction_4 components are:
-//   [0] Red channel scale factor.
-//   [1] Green channel scale factor.
-//   [2] Blue channel scale factor.
-//   [3] Pixel intensity. This is the same value as the one return from
-//       ArLightEstimate_getPixelIntensity().
-//  The RGB scale factors can be used independently from the pixel intensity
-//  value. They are put together for the convenience of only having to upload
-//  one float4 to the fragment shader.
-//  The RGB scale factors are not intended to brighten nor dim the scene.  They
-//  are only to shift the color of the virtual object towards the color of the
-//  light; not intensity of the light. The pixel intensity is used to match the
-//  intensity of the light in the scene.
-//  Color correction values are reported in gamma space.
-//  If rendering in gamma space, component-wise multiply them against the final
-//  calculated color after rendering.
-//  If rendering in linear space, first convert the values to linear space by
-//  rising to the power 2.2. Then component-wise multiply against the final
-//  calculated color after rendering.
+/// Gets the color correction values that are uploaded to the fragment shader.
+/// Use the RGB scale factors (components 0-2) to match the color of the light
+/// in the scene. Use the pixel intensity (component 3) to match the intensity
+/// of the light in the scene. If AR_LIGHT_ESTIMATION_MODE_AMBIENT_INTENSITY
+/// mode is not set, returns all zeros.
+///
+/// `out_color_correction_4` components are:
+///   - `[0]` Red channel scale factor. This value is larger or equal to zero.
+///   - `[1]` Green channel scale factor. This value is always 1.0 as the green
+///           channel is the reference baseline.
+///   - `[2]` Blue channel scale factor. This value is larger or equal to zero.
+///   - `[3]` Pixel intensity. This is the same value as the one return from
+///       ArLightEstimate_getPixelIntensity().
+///
+///  The RGB scale factors can be used independently from the pixel intensity
+///  value. They are put together for the convenience of only having to upload
+///  one float4 to the fragment shader.
+///
+///  The RGB scale factors are not intended to brighten nor dim the scene.  They
+///  are only to shift the color of the virtual object towards the color of the
+///  light; not intensity of the light. The pixel intensity is used to match the
+///  intensity of the light in the scene.
+///
+///  Color correction values are reported in gamma color space.
+///  If rendering in gamma color space, multiply them component-wise against the
+///  final calculated color after rendering. If rendering in linear space, first
+///  convert the values to linear space by rising to the power 2.2. Then
+///  multiply component-wise against the final calculated color after rendering.
 void ArLightEstimate_getColorCorrection(const ArSession *session,
                                         const ArLightEstimate *light_estimate,
                                         float *out_color_correction_4);
+
+/// Returns the timestamp of the given ArLightEstimate in nanoseconds. This
+/// timestamp uses the same time base as ArFrame_getTimestamp().
+void ArLightEstimate_getTimestamp(const ArSession *session,
+                                  const ArLightEstimate *light_estimate,
+                                  int64_t *out_timestamp_ns);
+
+/// Returns the direction of the main directional light based on the inferred
+/// Environmental HDR light estimation. If
+/// AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR mode is not set, returns
+/// [0.0, 1.0, 0.0], representing a light shining straight down from above.
+/// @param[in]    session           The ARCore session.
+/// @param[in]    light_estimate    The ARCore light estimate.
+/// @param[out]   out_direction_3   Output lighting direction.
+///   This array stores the normalized output lighting direction as 3 floats [x,
+///   y, z].
+void ArLightEstimate_getEnvironmentalHdrMainLightDirection(
+    const ArSession *session,
+    const ArLightEstimate *light_estimate,
+    float *out_direction_3);
+
+/// Returns the intensity of the main directional light based on the inferred
+/// Environmental HDR lighting estimation. All return values are larger or equal
+/// to zero. If AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR mode is not set,
+/// returns zero for all elements of the array.
+/// @param[in]    session           The ARCore session.
+/// @param[in]    light_estimate    The ARCore light estimate.
+/// @param[out]   out_intensity_3   Output lighting intensity.
+///   This array stores the output lighting intensity as 3 floats [r, g, b].
+void ArLightEstimate_getEnvironmentalHdrMainLightIntensity(
+    const ArSession *session,
+    const ArLightEstimate *light_estimate,
+    float *out_intensity_3);
+
+/// Gets the spherical harmonics coefficients for the ambient illumination based
+/// on the inferred Environmental HDR lighting.
+/// @param[in]    session              The ARCore session.
+/// @param[in]    light_estimate       The ARCore light estimate.
+/// @param[out]   out_coefficients_27  The output spherical harmonics
+///    coefficients for the ambient illumination. This array contains 9 sets of
+///    per-channel coefficients, or a total of 27 values of 32-bit floating
+///    point type. The coefficients are stored in a channel-major fashion e.g.
+///    [r0, g0, b0, r1, g1, b1, ... , r8, g8, b8]. If
+///    AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR mode is not set, returns zero
+///    for all 27 coefficients.
+void ArLightEstimate_getEnvironmentalHdrAmbientSphericalHarmonics(
+    const ArSession *session,
+    const ArLightEstimate *light_estimate,
+    float *out_coefficients_27);
+
+/// Gets the 6 cubemap textures in OpenGL texture format based on the inferred
+/// Environmental HDR lighting.
+/// @param[in]    session          The ARCore session.
+/// @param[in]    light_estimate   The ARCore light estimate.
+/// @param[out]   out_textures_6   The fixed size array for 6 cubemap textures.
+///                                ArImageCubemap type has been created to
+///                                facilitate representing the array of ArImage
+///                                pointers.
+/// out_textures_6 contains 6 images in AIMAGE_FORMAT_RGBA_FP16 format for the
+/// HDR cubemap. The memory layout for the image data is identical to
+/// GL_RGBA16F. The pixel values are in linear color space. The order of the
+/// images corresponds to the cubemap order as follows:
+///   out_textures_6[0]: GL_TEXTURE_CUBE_MAP_POSITIVE_X
+///   out_textures_6[1]: GL_TEXTURE_CUBE_MAP_NEGATIVE_X
+///   out_textures_6[2]: GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+///   out_textures_6[3]: GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
+///   out_textures_6[4]: GL_TEXTURE_CUBE_MAP_POSITIVE_Z
+///   out_textures_6[5]: GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+/// If AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR mode is not set, all textures
+/// will be assigned with zero pixel values. All 6 acquired images must be
+/// released with ArImage_release once they are no longer needed.
+void ArLightEstimate_acquireEnvironmentalHdrCubemap(
+    const ArSession *session,
+    const ArLightEstimate *light_estimate,
+    ArImageCubemap out_textures_6);
 
 /// @}
 
@@ -1434,23 +2829,53 @@ void ArAnchor_getPose(const ArSession *session,
                       ArPose *out_pose);
 
 /// Retrieves the current state of the pose of this anchor.
+///
+/// Note: Starting in ARCore 1.12, changing the active camera config using
+/// {@link ArSession_setCameraConfig()} may cause the tracking state on certain
+/// devices to become permanently PAUSED. For consistent behavior across all
+/// supported devices, release any previously created anchors and trackables
+/// when setting a new camera config.
 void ArAnchor_getTrackingState(const ArSession *session,
                                const ArAnchor *anchor,
                                ArTrackingState *out_tracking_state);
 
 /// Tells ARCore to stop tracking and forget this anchor.  This call does not
-/// release the reference to the anchor - that must be done separately using
+/// release any references to the anchor - that must be done separately using
 /// ArAnchor_release().
 void ArAnchor_detach(ArSession *session, ArAnchor *anchor);
 
-/// Releases a reference to an anchor. This does not mean that the anchor will
-/// stop tracking, as it will be obtainable from e.g. ArSession_getAllAnchors()
-/// if any other references exist.
+/// Releases a reference to an anchor. To stop tracking for this anchor, call
+/// ArAnchor_detach() first.
 ///
-/// This method may safely be called with @c nullptr - it will do nothing.
+/// This method may safely be called with @c NULL - it will do nothing.
 void ArAnchor_release(ArAnchor *anchor);
 
+/// Acquires the cloud anchor ID of the anchor. The ID acquired is an ASCII
+/// null-terminated string. The acquired ID must be released after use by the
+/// @c ArString_release function. For anchors with cloud state
+/// #AR_CLOUD_ANCHOR_STATE_NONE or #AR_CLOUD_ANCHOR_STATE_TASK_IN_PROGRESS, this
+/// will always be an empty string.
+///
+/// @param[in]    session             The ARCore session.
+/// @param[in]    anchor              The anchor to retrieve the cloud ID of.
+/// @param[inout] out_cloud_anchor_id A pointer to the acquired ID string.
+void ArAnchor_acquireCloudAnchorId(ArSession *session,
+                                   ArAnchor *anchor,
+                                   char **out_cloud_anchor_id);
+
+/// Gets the current cloud anchor state of the anchor. This state is guaranteed
+/// not to change until update() is called.
+///
+/// @param[in]    session   The ARCore session.
+/// @param[in]    anchor    The anchor to retrieve the cloud state of.
+/// @param[inout] out_state The current cloud state of the anchor.
+void ArAnchor_getCloudAnchorState(const ArSession *session,
+                                  const ArAnchor *anchor,
+                                  ArCloudAnchorState *out_state);
+
 /// @}
+
+// === ArSegment3D methods ===
 
 // === ArTrackableList methods ===
 
@@ -1483,7 +2908,7 @@ void ArTrackableList_acquireItem(const ArSession *session,
 /// will necessarily stop tracking. The same trackable may still be included in
 /// from other calls, for example ArSession_getAllTrackables().
 ///
-/// This method may safely be called with @c nullptr - it will do nothing.
+/// This method may safely be called with @c NULL - it will do nothing.
 void ArTrackable_release(ArTrackable *trackable);
 
 /// Retrieves the type of the trackable.  See ::ArTrackableType for valid types.
@@ -1493,6 +2918,12 @@ void ArTrackable_getType(const ArSession *session,
 
 /// Retrieves the current state of ARCore's knowledge of the pose of this
 /// trackable.
+///
+/// Note: Starting in ARCore 1.12, changing the active camera config using
+/// {@link ArSession_setCameraConfig()} may cause the tracking state on certain
+/// devices to become permanently PAUSED. For consistent behavior across all
+/// supported devices, release any previously created trackables when setting a
+/// new camera config.
 void ArTrackable_getTrackingState(const ArSession *session,
                                   const ArTrackable *trackable,
                                   ArTrackingState *out_tracking_state);
@@ -1509,6 +2940,7 @@ void ArTrackable_getTrackingState(const ArSession *session,
 ///   #AR_TRACKING_STATE_TRACKING
 /// - #AR_ERROR_SESSION_PAUSED if the session was paused
 /// - #AR_ERROR_RESOURCE_EXHAUSTED if too many anchors exist
+/// - #AR_ERROR_ILLEGAL_STATE if this trackable doesn't support anchors
 ArStatus ArTrackable_acquireNewAnchor(ArSession *session,
                                       ArTrackable *trackable,
                                       ArPose *pose,
@@ -1554,9 +2986,10 @@ void ArPlane_getType(const ArSession *session,
                      const ArPlane *plane,
                      ArPlaneType *out_plane_type);
 
-/// Returns the pose of the center of the detected plane. The pose's transformed
-/// +Y axis will be point normal out of the plane, with the +X and +Z axes
-/// orienting the extents of the bounding rectangle.
+/// Returns the pose of the center position of the plane's bounding rectangle.
+/// The pose's transformed +Y axis will be a normal vector pointing out of
+/// plane. The transformed +X and +Z axes represent right and up relative to the
+/// plane.
 ///
 /// @param[in]    session  The ARCore session.
 /// @param[in]    plane    The plane for which to retrieve center pose.
@@ -1636,7 +3069,7 @@ void ArPoint_getPose(const ArSession *session,
 /// Returns the OrientationMode of the point. For @c Point objects created by
 /// ArFrame_hitTest().
 /// If OrientationMode is ESTIMATED_SURFACE_NORMAL, then normal of the surface
-/// centered around the ArPoint was estimated succesfully.
+/// centered around the ArPoint was estimated successfully.
 ///
 /// @param[in]    session              The ARCore session.
 /// @param[in]    point                The point to retrieve the pose of.
@@ -1645,6 +3078,350 @@ void ArPoint_getPose(const ArSession *session,
 void ArPoint_getOrientationMode(const ArSession *session,
                                 const ArPoint *point,
                                 ArPointOrientationMode *out_orientation_mode);
+
+/// @}
+
+// === ArAugmentedImage methods ===
+
+/// @addtogroup augmented_image
+/// @{
+
+/// Returns the pose of the center of the Augmented Image, in world coordinates.
+/// The pose's transformed +Y axis will be the normal out of the plane. The
+/// pose's transformed +X axis points from left to right on the image, and the
+/// transformed +Z axis points from top to bottom on the image.
+///
+/// If the tracking state is PAUSED/STOPPED, this returns the pose when the
+/// image state was last TRACKING, or the identity pose if the image state has
+/// never been TRACKING.
+void ArAugmentedImage_getCenterPose(const ArSession *session,
+                                    const ArAugmentedImage *augmented_image,
+                                    ArPose *out_pose);
+
+/// Retrieves the estimated width, in metres, of the corresponding physical
+/// image, as measured along the local X-axis of the coordinate space with
+/// origin and axes as defined by ArAugmentedImage_getCenterPose().
+///
+/// ARCore will attempt to estimate the physical image's width and continuously
+/// update this estimate based on its understanding of the world. If the
+/// optional physical size is specified in the image database, this estimation
+/// process will happen more quickly. However, the estimated size may be
+/// different from the originally specified size.
+///
+/// If the tracking state is PAUSED/STOPPED, this returns the estimated width
+/// when the image state was last TRACKING. If the image state has never been
+/// TRACKING, this returns 0, even the image has a specified physical size in
+/// the image database.
+void ArAugmentedImage_getExtentX(const ArSession *session,
+                                 const ArAugmentedImage *augmented_image,
+                                 float *out_extent_x);
+
+/// Retrieves the estimated height, in metres, of the corresponding physical
+/// image, as measured along the local Z-axis of the coordinate space with
+/// origin and axes as defined by ArAugmentedImage_getCenterPose().
+///
+/// ARCore will attempt to estimate the physical image's height and continuously
+/// update this estimate based on its understanding of the world. If an optional
+/// physical size is specified in the image database, this estimation process
+/// will happen more quickly. However, the estimated size may be different from
+/// the originally specified size.
+///
+/// If the tracking state is PAUSED/STOPPED, this returns the estimated height
+/// when the image state was last TRACKING. If the image state has never been
+/// TRACKING, this returns 0, even the image has a specified physical size in
+/// the image database.
+void ArAugmentedImage_getExtentZ(const ArSession *session,
+                                 const ArAugmentedImage *augmented_image,
+                                 float *out_extent_z);
+
+/// Returns the zero-based positional index of this image from its originating
+/// image database.
+///
+/// This index serves as the unique identifier for the image in the database.
+void ArAugmentedImage_getIndex(const ArSession *session,
+                               const ArAugmentedImage *augmented_image,
+                               int32_t *out_index);
+
+/// Returns the name of this image.
+///
+/// The image name is not guaranteed to be unique.
+///
+/// This function will allocate memory for the name string, and set
+/// *out_augmented_image_name to point to that string. The caller must release
+/// the string using ArString_release when the string is no longer needed.
+void ArAugmentedImage_acquireName(const ArSession *session,
+                                  const ArAugmentedImage *augmented_image,
+                                  char **out_augmented_image_name);
+
+/// Returns the current method being used to track this Augmented Image.
+void ArAugmentedImage_getTrackingMethod(
+    const ArSession *session,
+    const ArAugmentedImage *image,
+    ArAugmentedImageTrackingMethod *out_tracking_method);
+
+/// @}
+
+// === ArAugmentedFace methods ===
+
+/// @addtogroup augmented_face
+/// @{
+
+/// Returns a pointer to an array of 3D vertices in (x, y, z) packing. These
+/// vertices are relative to the center pose of the face with units in meters.
+///
+/// The pointer returned by this function is valid until ArTrackable_release()
+/// or the next ArSession_update() is called. The application must copy the
+/// data if they wish to retain it for longer.
+///
+/// If the face's tracking state is AR_TRACKING_STATE_PAUSED, then the
+/// value of the size of the returned array is 0.
+///
+/// @param[in]  session                The ARCore session.
+/// @param[in]  face                   The face for which to retrieve vertices.
+/// @param[out] out_vertices           A pointer to an array of 3D vertices in
+///                                    (x, y, z) packing.
+/// @param[out] out_number_of_vertices The number of vertices in the mesh. The
+///     returned pointer will point to an array of size out_number_of_vertices *
+///     3 or @c NULL if the size is 0.
+void ArAugmentedFace_getMeshVertices(const ArSession *session,
+                                     const ArAugmentedFace *face,
+                                     const float **out_vertices,
+                                     int32_t *out_number_of_vertices);
+
+/// Returns a pointer to an array of 3D normals in (x, y, z) packing, where each
+/// (x, y, z) is a unit vector of the normal to the surface at each vertex.
+/// There is exactly one normal vector for each vertex. These normals are
+/// relative to the center pose of the face.
+///
+/// The pointer returned by this function is valid until ArTrackable_release()
+/// or the next ArSession_update() is called. The application must copy the
+/// data if they wish to retain it for longer.
+///
+/// If the face's tracking state is AR_TRACKING_STATE_PAUSED, then the
+/// value of the size of the returned array is 0.
+///
+/// @param[in]  session               The ARCore session.
+/// @param[in]  face                  The face for which to retrieve normals.
+/// @param[out] out_normals           A pointer to an array of 3D normals in
+///                                   (x, y, z) packing.
+/// @param[out] out_number_of_normals The number of normals in the mesh. The
+///     returned pointer will point to an array of size out_number_of_normals *
+///     3, or @c NULL if the size is 0.
+void ArAugmentedFace_getMeshNormals(const ArSession *session,
+                                    const ArAugmentedFace *face,
+                                    const float **out_normals,
+                                    int32_t *out_number_of_normals);
+
+/// Returns a pointer to an array of UV texture coordinates in (u, v) packing.
+/// There is a pair of texture coordinates for each vertex. These values
+/// never change.
+///
+/// The pointer returned by this function is valid until ArTrackable_release()
+/// or the next ArSession_update() is called. The application must copy the
+/// data if they wish to retain it for longer.
+///
+/// If the face's tracking state is AR_TRACKING_STATE_PAUSED, then the
+/// value of the size of the returned array is 0.
+///
+/// @param[in]  session                 The ARCore session.
+/// @param[in]  face                    The face for which to retrieve texture
+///                                     coordinates.
+/// @param[out] out_texture_coordinates A pointer to an array of UV texture
+///                                     coordinates in (u, v) packing.
+/// @param[out] out_number_of_texture_coordinates The number of texture
+///     coordinates in the mesh. The returned pointer will point to an array of
+///     size out_number_of_texture_coordinates * 2, or @c NULL if the size is 0.
+void ArAugmentedFace_getMeshTextureCoordinates(
+    const ArSession *session,
+    const ArAugmentedFace *face,
+    const float **out_texture_coordinates,
+    int32_t *out_number_of_texture_coordinates);
+
+/// Returns a pointer to an array of triangles indices in consecutive triplets.
+///
+/// Every three consecutive values are indices that represent a triangle. The
+/// vertex position and texture coordinates are mapped by the indices. The front
+/// face of each triangle is defined by the face where the vertices are in
+/// counter clockwise winding order. These values never change.
+///
+/// The pointer returned by this function is valid until ArTrackable_release()
+/// or the next ArSession_update() is called. The application must copy the
+/// data if they wish to retain it for longer.
+///
+/// If the face's tracking state is AR_TRACKING_STATE_PAUSED, then the
+/// value of the size of the returned array is 0.
+///
+/// @param[in]  session                 The ARCore session.
+/// @param[in]  face                    The face for which to retrieve triangle
+///                                     indices.
+/// @param[out] out_triangle_indices    A pointer to an array of triangle
+///                                     indices packed in consecutive triplets.
+/// @param[out] out_number_of_triangles The number of triangles in the mesh. The
+///     returned pointer will point to an array of size out_number_of_triangles
+///     * 3, or @c NULL if the size is 0.
+void ArAugmentedFace_getMeshTriangleIndices(
+    const ArSession *session,
+    const ArAugmentedFace *face,
+    const uint16_t **out_triangle_indices,
+    int32_t *out_number_of_triangles);
+
+/// Returns the pose of a face region in world coordinates when the face
+/// trackable state is #AR_TRACKING_STATE_TRACKING. When face trackable state is
+/// #AR_TRACKING_STATE_PAUSED, the identity pose will be returned.
+///
+/// @param[in]  session     The ARCore session.
+/// @param[in]  face        The face for which to retrieve face region pose.
+/// @param[in]  region_type The face region for which to get the pose.
+/// @param[out] out_pose    The Pose of the selected region when
+///     #AR_TRACKING_STATE_TRACKING, or an identity pose when
+///     #AR_TRACKING_STATE_PAUSED.
+void ArAugmentedFace_getRegionPose(const ArSession *session,
+                                   const ArAugmentedFace *face,
+                                   const ArAugmentedFaceRegionType region_type,
+                                   ArPose *out_pose);
+
+/// @}
+
+/// @addtogroup augmented_face
+/// @{
+
+/// Returns the pose of the center of the face.
+///
+/// @param[in]    session  The ARCore session.
+/// @param[in]    face     The face for which to retrieve center pose.
+/// @param[inout] out_pose An already-allocated ArPose object into which the
+///     pose will be stored.
+void ArAugmentedFace_getCenterPose(const ArSession *session,
+                                   const ArAugmentedFace *face,
+                                   ArPose *out_pose);
+
+/// @}
+
+// === ArAugmentedImageDatabase methods ===
+
+/// @addtogroup augmented_image_database
+/// @{
+
+/// Creates a new empty image database.
+void ArAugmentedImageDatabase_create(
+    const ArSession *session,
+    ArAugmentedImageDatabase **out_augmented_image_database);
+
+/// Creates a new image database from a byte array. The contents of the byte
+/// array must have been generated by the command-line database generation tool
+/// provided in the SDK, or at runtime from ArAugmentedImageDatabase_serialize.
+///
+/// Note: this function takes about 10-20ms for a 5MB byte array. Run this in a
+/// background thread if this affects your application.
+///
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_DATA_INVALID_FORMAT - the bytes are in an invalid format.
+/// - #AR_ERROR_DATA_UNSUPPORTED_VERSION - the database is not supported by
+///   this version of the SDK.
+ArStatus ArAugmentedImageDatabase_deserialize(
+    const ArSession *session,
+    const uint8_t *database_raw_bytes,
+    int64_t database_raw_bytes_size,
+    ArAugmentedImageDatabase **out_augmented_image_database);
+
+/// Serializes an image database to a byte array.
+///
+/// This function will allocate memory for the serialized raw byte array, and
+/// set *out_image_database_raw_bytes to point to that byte array. The caller is
+/// expected to release the byte array using ArByteArray_release when the byte
+/// array is no longer needed.
+void ArAugmentedImageDatabase_serialize(
+    const ArSession *session,
+    const ArAugmentedImageDatabase *augmented_image_database,
+    uint8_t **out_image_database_raw_bytes,
+    int64_t *out_image_database_raw_bytes_size);
+
+/// Adds a single named image of unknown physical size to an image database,
+/// from an array of grayscale pixel values. Returns the zero-based positional
+/// index of the image within the image database.
+///
+/// If the physical size of the image is known, use
+/// ArAugmentedImageDatabase_addImageWithPhysicalSize instead, to improve image
+/// detection time.
+///
+/// For images added via ArAugmentedImageDatabase_addImage, ARCore estimates the
+/// physical image's size and pose at runtime when the physical image is visible
+/// and is being tracked. This extra estimation step will require the user to
+/// move their device to view the physical image from different viewpoints
+/// before the size and pose of the physical image can be estimated.
+///
+/// This function takes time to perform non-trivial image processing (20ms -
+/// 30ms), and should be run on a background thread.
+///
+/// The image name is expected to be a null-terminated string in UTF-8 format.
+///
+/// Currently, only images for which the stride is equal to the width are
+/// supported.
+///
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_IMAGE_INSUFFICIENT_QUALITY - image quality is insufficient, e.g.
+///   because of lack of features in the image.
+/// - #AR_ERROR_INVALID_ARGUMENT - if image_stride_in_pixels is not equal to
+///   image_width_in_pixels.
+ArStatus ArAugmentedImageDatabase_addImage(
+    const ArSession *session,
+    ArAugmentedImageDatabase *augmented_image_database,
+    const char *image_name,
+    const uint8_t *image_grayscale_pixels,
+    int32_t image_width_in_pixels,
+    int32_t image_height_in_pixels,
+    int32_t image_stride_in_pixels,
+    int32_t *out_index);
+
+/// Adds a single named image to an image database, from an array of grayscale
+/// pixel values, along with a positive physical width in meters for this image.
+/// Returns the zero-based positional index of the image within the image
+/// database.
+///
+/// If the physical size of the image is not known, use
+/// ArAugmentedImageDatabase_addImage instead, at the expense of an increased
+/// image detection time.
+///
+/// For images added via ArAugmentedImageDatabase_addImageWithPhysicalSize,
+/// ARCore can estimate the pose of the physical image at runtime as soon as
+/// ARCore detects the physical image, without requiring the user to move the
+/// device to view the physical image from different viewpoints. Note that
+/// ARCore will refine the estimated size and pose of the physical image as it
+/// is viewed from different viewpoints.
+///
+/// This function takes time to perform non-trivial image processing (20ms -
+/// 30ms), and should be run on a background thread.
+///
+/// The image name is expected to be a null-terminated string in UTF-8 format.
+///
+/// Currently, only images for which the stride is equal to the width are
+/// supported.
+///
+/// @return #AR_SUCCESS or any of:
+/// - #AR_ERROR_IMAGE_INSUFFICIENT_QUALITY - image quality is insufficient, e.g.
+///   because of lack of features in the image.
+/// - #AR_ERROR_INVALID_ARGUMENT - image_width_in_meters is <= 0 or if
+///   image_stride_in_pixels is not equal to image_width_in_pixels.
+ArStatus ArAugmentedImageDatabase_addImageWithPhysicalSize(
+    const ArSession *session,
+    ArAugmentedImageDatabase *augmented_image_database,
+    const char *image_name,
+    const uint8_t *image_grayscale_pixels,
+    int32_t image_width_in_pixels,
+    int32_t image_height_in_pixels,
+    int32_t image_stride_in_pixels,
+    float image_width_in_meters,
+    int32_t *out_index);
+
+/// Returns the number of images in the image database.
+void ArAugmentedImageDatabase_getNumImages(
+    const ArSession *session,
+    const ArAugmentedImageDatabase *augmented_image_database,
+    int32_t *out_number_of_images);
+
+/// Releases memory used by an image database.
+void ArAugmentedImageDatabase_destroy(
+    ArAugmentedImageDatabase *augmented_image_database);
 
 /// @}
 
@@ -1716,9 +3493,9 @@ void ArHitResult_getDistance(const ArSession *session,
 /// perpendicular to the cast ray and points right from the perspective of the
 /// user's device, Y+ points up, and Z+ points roughly toward the user's device.
 ///
-/// If you wish to retain the location of this pose beyond the duration of aÎ
-/// single frame, create an anchor using ArHitResult_createAnchor() to save the
-/// pose in a physically consistent way.
+/// If you wish to retain the location of this pose beyond the duration of a
+/// single frame, create an anchor using ArHitResult_acquireNewAnchor() to save
+/// the pose in a physically consistent way.
 ///
 /// @param[in]    session    The ARCore session.
 /// @param[in]    hit_result The hit result to retrieve the pose of.
@@ -1750,8 +3527,20 @@ ArStatus ArHitResult_acquireNewAnchor(ArSession *session,
 
 /// @}
 
+// Utility methods for releasing data.
+
+/// Releases a string acquired using an ARCore API function.
+///
+/// @param[in] str The string to be released.
+void ArString_release(char *str);
+
+/// Releases a byte array created using an ARCore API function.
+void ArByteArray_release(uint8_t *byte_array);
+
+#undef AR_DEFINE_ENUM
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // THIRD_PARTY_ARCORE_AR_CORE_C_API_ARCORE_C_API_H_
+#endif  // ARCORE_C_API_H_
