@@ -5,8 +5,10 @@ use std::rc::Rc;
 
 use android_injected_glue::write_log;
 use ffi_arcore::*;
-use gleam::gl;
+use sparkle::gl;
 use util;
+
+pub const TEXTURE_EXTERNAL_OES: gl::ffi::types::GLenum = 0x8D65;
 
 pub const K_NUM_VERTICES: i32 = 4;
 
@@ -67,9 +69,9 @@ impl BackgroundRenderer {
             }
 
             let texture_id = gl.gen_textures(1)[0];
-            gl.bind_texture(gl::TEXTURE_EXTERNAL_OES, texture_id);
-            gl.tex_parameter_i(gl::TEXTURE_EXTERNAL_OES, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-            gl.tex_parameter_i(gl::TEXTURE_EXTERNAL_OES, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+            gl.bind_texture(TEXTURE_EXTERNAL_OES, texture_id);
+            gl.tex_parameter_i(TEXTURE_EXTERNAL_OES, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+            gl.tex_parameter_i(TEXTURE_EXTERNAL_OES, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
 
             let uniform_texture = gl.get_uniform_location(shader_program, "texture") as u32;
@@ -124,7 +126,7 @@ impl BackgroundRenderer {
 
             gl.uniform_1i(self.uniform_texture_ as i32, 1);
             gl.active_texture(gl::TEXTURE1);
-            gl.bind_texture(gl::TEXTURE_EXTERNAL_OES, self.texture_id_);
+            gl.bind_texture(TEXTURE_EXTERNAL_OES, self.texture_id_);
 
 
 //            gl.enable_vertex_attrib_array(self.attribute_vertices_);

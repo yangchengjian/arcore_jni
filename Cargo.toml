@@ -5,13 +5,12 @@ build = "build.rs"
 authors = ["yangchengjian"]
 
 [build-dependencies]
-bindgen = "0.26.3"
-cc = "1.0"
+bindgen = "0.51.1"
 
 [dependencies]
 android_injected_glue = "0.2"
 libc = "0.2"
-gleam = "0.5"
+sparkle = "0.1.16"
 serde = "1.0"
 lodepng = "2.0.0"
 rgb = "0.8"

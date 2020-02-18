@@ -1,5 +1,4 @@
 extern crate bindgen;
-extern crate cc;
 
 use std::env;
 use std::fs::File;
@@ -10,7 +9,7 @@ fn main() {
 
 //    println!("OUT_DIR : {}", env::var("CARGO_PKG_HOMEPAGE").unwrap());
 //    println!("cargo:rustc-link-lib=bz2");
-    println!("cargo:rustc-link-search=native={}", "jni");
+//    println!("cargo:rustc-link-search=native={}", "jni/armeabi-v7a");
     println!("cargo:rustc-link-lib=dylib=arcore_sdk_c");
 //    println!("cargo:include={}", "/Users/yangchengjian");
 
@@ -19,9 +18,10 @@ fn main() {
     // the resulting bindings.
     let bindings = bindgen::Builder::default()
         .trust_clang_mangling(false)
-        .link("arcore_sdk_c")
+//        .link("arcore_sdk_c")
         // The input header we would like to generate
         // bindings for.
+        .clang_arg("--sysroot=/Users/yangchengjian/HoldonBeginner/Sft/android-ndk-r15c/sysroot")
         .header("include/arcore_c_api.h")
         // Finish the builder and generate the bindings.
         .generate()

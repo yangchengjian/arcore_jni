@@ -1,7 +1,7 @@
 use std::ptr;
 use std::rc::Rc;
 
-use gleam::gl::*;
+use sparkle::gl::*;
 use android_injected_glue::write_log;
 use ffi_arcore::*;
 

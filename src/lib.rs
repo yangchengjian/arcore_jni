@@ -2,9 +2,9 @@
 extern crate android_injected_glue;
 extern crate jni;
 extern crate glm;
-extern crate gleam;
 extern crate lodepng;
 extern crate rgb;
+extern crate sparkle;
 
 mod ffi_arcore {
     include!(concat!(env!("OUT_DIR"), "/arcore_bindings.rs"));
@@ -13,13 +13,12 @@ mod ffi_arcore {
 pub mod background_renderer;
 pub mod plane_renderer;
 pub mod point_cloud_renderer;
-pub mod ffi;
 pub mod util;
 
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use gleam::gl;
+use sparkle::gl;
 
 use android_injected_glue::write_log;
 use android_injected_glue::ffi::{jlong, jobject, jclass, android_app, ANativeActivity, JavaVM, JNIEnv, JNIInvokeInterface, JNINativeInterface};
@@ -102,7 +101,7 @@ pub struct ArCore {
     pub proj_mat4x4: [f32; 16],
     pub mode_mat4x4: [f32; 16],
     pub pv: Vec<f32>,
-    pub uniform_mvp_mat_: gl::GLint,
+    pub uniform_mvp_mat_: gl::ffi::types::GLint,
 }
 
 impl ArCore {

@@ -5,8 +5,8 @@ use std::path::Path;
 
 use android_injected_glue::write_log;
 use ffi_arcore::*;
-use gleam::gl;
 use rgb::*;
+use sparkle::gl;
 use util;
 
 const VS_SRC: &'static [u8] = b"
