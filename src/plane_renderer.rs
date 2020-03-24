@@ -256,9 +256,9 @@ impl PlaneRenderer {
             // Get plane center in XZ axis.
             let plane_center: ::glm::Vec2 = ::glm::vec2(self.model_mat_[12], self.model_mat_[14]);
             // Feather distance 0.2 meters.
-            let kFeatherLength = 0.2;
+            let k_feather_length = 0.2;
             // Feather scale over the distance between plane center and vertices.
-            let kFeatherScale = 0.2;
+            let k_feather_scale = 0.2;
 
             // Fill vertex 0 to 3, with alpha set to 1.
             for i in 0..vertices_size {
@@ -267,12 +267,12 @@ impl PlaneRenderer {
 
                 // Vector from plane center to current point.
                 let d: ::glm::Vec2 = v - plane_center;
-                let kf = kFeatherLength / ::glm::length(d);
+                let kf = k_feather_length / ::glm::length(d);
                 let mut kfinal = 1.0;
-                if kf < kFeatherScale {
+                if kf < k_feather_scale {
                     kfinal = kf;
                 } else {
-                    kfinal = kFeatherScale;
+                    kfinal = k_feather_scale;
                 }
                 let scale = 1.0 - kfinal;
                 let result_v: ::glm::Vec2 = d * scale + plane_center;
