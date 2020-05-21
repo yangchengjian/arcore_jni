@@ -9,11 +9,10 @@ bindgen = "0.51.1"
 
 [dependencies]
 android_injected_glue = "0.2"
+jni = "0.10.2"
 libc = "0.2"
 sparkle = "0.1.16"
 serde = "1.0"
-lodepng = "2.0.0"
+lodepng = "2.5.0"
 rgb = "0.8"
 glm = {git = "https://github.com/dche/glm-rs.git", branch = "master"}
-
-jni = { version = "0.5", default-features = false }

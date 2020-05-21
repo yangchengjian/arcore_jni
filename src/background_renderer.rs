@@ -59,13 +59,13 @@ pub struct BackgroundRenderer {
 }
 
 impl BackgroundRenderer {
-    pub fn initializel_content(gl: &gl::Gl) -> BackgroundRenderer {
-        write_log("arcore_jni::background_renderer::initializel_content");
+    pub fn new(gl: &gl::Gl) -> BackgroundRenderer {
+        write_log("arcore_jni::background_renderer::new");
         unsafe {
             let shader_program = util::create_program(gl, VS_SRC, FS_SRC);
 
             if shader_program == 0 {
-                write_log("arcore_jni::background_renderer::initializel_content Could not create program.");
+                write_log("arcore_jni::background_renderer::new Could not create program.");
             }
 
             let texture_id = gl.gen_textures(1)[0];
@@ -80,11 +80,11 @@ impl BackgroundRenderer {
 
             let transformed_uvs: [f32; 8] = [0.0; 8];
 
-            write_log(&format!("arcore_jni::background_renderer::initializel_content shader_program : {}", shader_program));
-            write_log(&format!("arcore_jni::background_renderer::initializel_content texture_id : {:?}", texture_id));
-            write_log(&format!("arcore_jni::background_renderer::initializel_content uniform_texture : {}", uniform_texture));
-            write_log(&format!("arcore_jni::background_renderer::initializel_content attribute_vertices : {}", attribute_vertices));
-            write_log(&format!("arcore_jni::background_renderer::initializel_content attribute_uvs : {}", attribute_uvs));
+            write_log(&format!("arcore_jni::background_renderer::new shader_program : {}", shader_program));
+            write_log(&format!("arcore_jni::background_renderer::new texture_id : {:?}", texture_id));
+            write_log(&format!("arcore_jni::background_renderer::new uniform_texture : {}", uniform_texture));
+            write_log(&format!("arcore_jni::background_renderer::new attribute_vertices : {}", attribute_vertices));
+            write_log(&format!("arcore_jni::background_renderer::new attribute_uvs : {}", attribute_uvs));
 
             BackgroundRenderer {
                 shader_program_: shader_program,
@@ -115,7 +115,7 @@ impl BackgroundRenderer {
 
             write_log(&format!("arcore_jni::background_renderer::draw geometry_changed : {}", *geometry_changed));
 
-            if (*geometry_changed != 0 || !self.uvs_initialized_) {
+            if *geometry_changed != 0 || !self.uvs_initialized_ {
                 ArFrame_transformDisplayUvCoords(session, frame, K_NUM_VERTICES * 2, &K_UVS as *const f32, self.transformed_uvs_.as_mut_ptr());
                 self.uvs_initialized_ = true;
                 write_log(&format!("arcore_jni::background_renderer::draw self.uvs_initialized_ : {}", self.uvs_initialized_));

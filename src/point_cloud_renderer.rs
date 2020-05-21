@@ -32,20 +32,20 @@ pub struct PointCloudRenderer {
 }
 
 impl PointCloudRenderer {
-    pub fn initializel_content(gl: &gl::Gl) -> PointCloudRenderer {
-        write_log("arcore_jni::point_cloud_renderer::initializel_content");
+    pub fn new(gl: &gl::Gl) -> PointCloudRenderer {
+        write_log("arcore_jni::point_cloud_renderer::new");
 
         let shader_program = util::create_program(gl, VS_SRC, FS_SRC);
         if shader_program == 0 {
-            write_log("arcore_jni::point_cloud_renderer::initializel_content Could not create program.");
+            write_log("arcore_jni::point_cloud_renderer::new Could not create program.");
         }
 
         let attribute_vertices_ = gl.get_attrib_location(shader_program, "vertex") as u32;
         let uniform_mvp_mat_ = gl.get_uniform_location(shader_program, "mvp") as u32;
 
-        write_log(&format!("arcore_jni::point_cloud_renderer::initializel_content shader_program : {}", shader_program));
-        write_log(&format!("arcore_jni::point_cloud_renderer::initializel_content attribute_vertices_ : {}", attribute_vertices_));
-        write_log(&format!("arcore_jni::point_cloud_renderer::initializel_content uniform_mvp_mat_ : {}", uniform_mvp_mat_));
+        write_log(&format!("arcore_jni::point_cloud_renderer::new shader_program : {}", shader_program));
+        write_log(&format!("arcore_jni::point_cloud_renderer::new attribute_vertices_ : {}", attribute_vertices_));
+        write_log(&format!("arcore_jni::point_cloud_renderer::new uniform_mvp_mat_ : {}", uniform_mvp_mat_));
 
 //        let mut mvp_matrix = ::glm::mat4(1., 2., 3., 4.,
 //                                         5., 6., 7., 8.,
@@ -62,9 +62,9 @@ impl PointCloudRenderer {
 //            }
 //        }
 //
-//        write_log(&format!("arcore_jni::point_cloud_renderer::initializel_content mvp_matrix : {:?}", mvp_matrix));
-//        write_log(&format!("arcore_jni::point_cloud_renderer::initializel_content mvp_array_vec4 : {:?}", mvp_array_vec4));
-//        write_log(&format!("arcore_jni::point_cloud_renderer::initializel_content mvp_array : {:?}", mvp_array));
+//        write_log(&format!("arcore_jni::point_cloud_renderer::new mvp_matrix : {:?}", mvp_matrix));
+//        write_log(&format!("arcore_jni::point_cloud_renderer::new mvp_array_vec4 : {:?}", mvp_array_vec4));
+//        write_log(&format!("arcore_jni::point_cloud_renderer::new mvp_array : {:?}", mvp_array));
 
         PointCloudRenderer {
             shader_program_: shader_program,

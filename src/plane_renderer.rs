@@ -70,13 +70,13 @@ pub struct PlaneRenderer {
 }
 
 impl PlaneRenderer {
-    pub fn initializel_content(gl: &gl::Gl) -> PlaneRenderer {
-        write_log("arcore_jni::plane_renderer::initializel_content");
+    pub fn new(gl: &gl::Gl) -> PlaneRenderer {
+        write_log("arcore_jni::plane_renderer::new");
 
         let shader_program = util::create_program(gl, VS_SRC, FS_SRC);
 
         if shader_program == 0 {
-            write_log("arcore_jni::plane_renderer::initializel_content Could not create program.");
+            write_log("arcore_jni::plane_renderer::new Could not create program.");
         }
 
         let uniform_mvp_mat_ = gl.get_uniform_location(shader_program, "mvp") as u32;
@@ -96,13 +96,13 @@ impl PlaneRenderer {
 
 //        match ::lodepng::decode32_file("assests/models/trigrid.png") {
 //            Ok(image) => {
-//                write_log(&format!("arcore_jni::PlaneRenderer::initializel_content Loaded file , width = {}, height = {}, image = {:?}", image.width, image.height, image));
+//                write_log(&format!("arcore_jni::PlaneRenderer::new Loaded file , width = {}, height = {}, image = {:?}", image.width, image.height, image));
 //                let image_u8: &[u8] = image.buffer.as_bytes();
 //                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, image.width as gl::GLsizei,
 //                                image.height as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(image_u8))
 //            }
 //            Err(e) => {
-//                write_log(&format!("arcore_jni::PlaneRenderer::initializel_content  Could not load file , because: {}", e));
+//                write_log(&format!("arcore_jni::PlaneRenderer::new  Could not load file , because: {}", e));
 //                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
 //                                1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
 //            }
@@ -111,7 +111,7 @@ impl PlaneRenderer {
 
 //        let path = Path::new("assests/models/trigrid.png");
 //        let mut state = ::lodepng::State::new();
-//        write_log(&format!("arcore_jni::PlaneRenderer::initializel_content path =  {:?}", path));
+//        write_log(&format!("arcore_jni::PlaneRenderer::new path =  {:?}", path));
 //
 //        match state.decode_file(&path) {
 //            Ok(image) =>
@@ -122,13 +122,13 @@ impl PlaneRenderer {
 //                                        bitmap.height as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(image_u8))
 //                    }
 //                    other => {
-//                        write_log(&format!("arcore_jni::PlaneRenderer::initializel_content  Could not load file , other: {:?}", other));
+//                        write_log(&format!("arcore_jni::PlaneRenderer::new  Could not load file , other: {:?}", other));
 //                        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
 //                                        1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
 //                    },
 //                },
 //            Err(e) => {
-//                write_log(&format!("arcore_jni::PlaneRenderer::initializel_content  Could not load file , because: {}", e));
+//                write_log(&format!("arcore_jni::PlaneRenderer::new  Could not load file , because: {}", e));
 //                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
 //                                1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
 //            }

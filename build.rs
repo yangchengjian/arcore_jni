@@ -1,9 +1,7 @@
 extern crate bindgen;
 
 use std::env;
-use std::fs::File;
 use std::path::PathBuf;
-use std::path::Path;
 
 fn main() {
 
@@ -11,6 +9,7 @@ fn main() {
 //    println!("cargo:rustc-link-lib=bz2");
 //    println!("cargo:rustc-link-search=native={}", "jni/armeabi-v7a");
     println!("cargo:rustc-link-lib=dylib=arcore_sdk_c");
+    println!("cargo:rustc-link-lib=dylib=jnigraphics");
 //    println!("cargo:include={}", "/Users/yangchengjian");
 
     // The bindgen::Builder is the main entry point
