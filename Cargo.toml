@@ -1,5 +1,5 @@
 [package]
-name = "arcore_jni"
+name = "arcore_rs"
 version = "0.1.0"
 build = "build.rs"
 authors = ["yangchengjian"]
@@ -9,7 +9,6 @@ bindgen = "0.51.1"
 
 [dependencies]
 android_injected_glue = "0.2"
-jni = "0.10.2"
 libc = "0.2"
 sparkle = "0.1.16"
 serde = "1.0"

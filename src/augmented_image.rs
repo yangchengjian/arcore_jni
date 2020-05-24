@@ -1,8 +1,6 @@
 use ffi_arcore::*;
-
-use android_injected_glue::write_log;
-
 use jni_interface;
+use log;
 use util;
 
 pub fn create_augmented_image_database(ar_session: *const ArSession) -> *mut ArAugmentedImageDatabase {
@@ -28,9 +26,9 @@ pub fn create_augmented_image_database(ar_session: *const ArSession) -> *mut ArA
         );
 
         if !load_image_result {
-            write_log(&format!("arcore_jni::lib::create_augmented_image_database load image failed: {}", &load_image_result));
+            log::e(&format!("arcore::lib::create_augmented_image_database load image failed: {}", &load_image_result));
         } else {
-            write_log(&format!("arcore_jni::lib::create_augmented_image_database load image width = {}, height = {}, stride = {}, image_pixel_buffer = {:?}", &width, &height, &stride, &image_pixel_buffer));
+            log::d(&format!("arcore::lib::create_augmented_image_database load image width = {}, height = {}, stride = {}, image_pixel_buffer = {:?}", &width, &height, &stride, &image_pixel_buffer));
         }
 
 
@@ -38,16 +36,9 @@ pub fn create_augmented_image_database(ar_session: *const ArSession) -> *mut ArA
         let mut grayscale_buffer: *mut u8 = ::std::ptr::null_mut();
         util::convert_rgba_to_grayscale(image_pixel_buffer, width, height, stride, &mut grayscale_buffer);
 
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database ar_session : {:?}", &ar_session));
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database k_sample_image_name : {:?}", &k_sample_image_name));
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database grayscale_buffer : {:?}", &grayscale_buffer));
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database width : {:?}", &width));
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database height : {:?}", &height));
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database index : {:?}", &index));
-
         // add image to ArAugmentedImageDatabase
         let grayscale_stride = stride / 4;
-        write_log(&format!("arcore_jni::lib::create_augmented_image_database grayscale_stride : {:?}", &grayscale_stride));
+        log::i(&format!("arcore::lib::create_augmented_image_database grayscale_stride : {:?}", &grayscale_stride));
         let ar_status: ArStatus = ArAugmentedImageDatabase_addImage(
             ar_session,
             ar_augmented_image_database,
@@ -59,7 +50,7 @@ pub fn create_augmented_image_database(ar_session: *const ArSession) -> *mut ArA
             &mut index as *mut i32);
 
         if ar_status != AR_SUCCESS as i32 {
-            write_log(&format!("arcore_jni::lib::create_augmented_image_database ArAugmentedImageDatabase_addImage failed: {}", &ar_status));
+            log::e(&format!("arcore::lib::create_augmented_image_database ArAugmentedImageDatabase_addImage failed: {}", &ar_status));
         }
         ar_augmented_image_database
     }

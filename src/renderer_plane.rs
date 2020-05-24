@@ -3,10 +3,12 @@ use std::io::BufReader;
 use std::fs::File;
 use std::path::Path;
 
-use android_injected_glue::write_log;
 use ffi_arcore::*;
 use rgb::*;
 use sparkle::gl;
+
+use jni_interface;
+use log;
 use util;
 
 const VS_SRC: &'static [u8] = b"
@@ -41,19 +43,6 @@ const FS_SRC: &'static [u8] = b"
 
 #[derive(Clone, Debug)]
 pub struct PlaneRenderer {
-    //    std::vector<glm::vec3> vertices_;
-    //    std::vector<GLushort> triangles_;
-    //    glm::mat4 model_mat_ = glm::mat4(1.0f);
-    //
-    //    GLuint vertex_buffers_[2];
-    //    GLuint texture_id_;
-    //
-    //    GLuint shader_program_;
-    //    GLuint attri_vertices_;
-    //    GLuint uniform_mvp_mat_;
-    //    GLuint uniform_texture_;
-    //    GLuint uniform_texture_mat_;
-    //    GLuint uniform_color_;
     vertices_: Vec<::glm::Vec3>,
     triangles_: Vec<gl::types::GLushort>,
     model_mat_: [f32; 16],
@@ -71,12 +60,12 @@ pub struct PlaneRenderer {
 
 impl PlaneRenderer {
     pub fn new(gl: &gl::Gl) -> PlaneRenderer {
-        write_log("arcore_jni::plane_renderer::new");
+        log::i("arcore::plane_renderer::new");
 
         let shader_program = util::create_program(gl, VS_SRC, FS_SRC);
 
         if shader_program == 0 {
-            write_log("arcore_jni::plane_renderer::new Could not create program.");
+            log::e("arcore::plane_renderer::new Could not create program.");
         }
 
         let uniform_mvp_mat_ = gl.get_uniform_location(shader_program, "mvp") as u32;
@@ -94,54 +83,14 @@ impl PlaneRenderer {
         gl.tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
         gl.tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-//        match ::lodepng::decode32_file("assests/models/trigrid.png") {
-//            Ok(image) => {
-//                write_log(&format!("arcore_jni::PlaneRenderer::new Loaded file , width = {}, height = {}, image = {:?}", image.width, image.height, image));
-//                let image_u8: &[u8] = image.buffer.as_bytes();
-//                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, image.width as gl::GLsizei,
-//                                image.height as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(image_u8))
-//            }
-//            Err(e) => {
-//                write_log(&format!("arcore_jni::PlaneRenderer::new  Could not load file , because: {}", e));
-//                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
-//                                1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
-//            }
-//        }
-
-
-//        let path = Path::new("assests/models/trigrid.png");
-//        let mut state = ::lodepng::State::new();
-//        write_log(&format!("arcore_jni::PlaneRenderer::new path =  {:?}", path));
-//
-//        match state.decode_file(&path) {
-//            Ok(image) =>
-//                match image {
-//                    ::lodepng::Image::RGBA(bitmap) => {
-//                        let image_u8: &[u8] = bitmap.buffer.as_bytes();
-//                        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, bitmap.width as gl::GLsizei,
-//                                        bitmap.height as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(image_u8))
-//                    }
-//                    other => {
-//                        write_log(&format!("arcore_jni::PlaneRenderer::new  Could not load file , other: {:?}", other));
-//                        gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
-//                                        1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
-//                    },
-//                },
-//            Err(e) => {
-//                write_log(&format!("arcore_jni::PlaneRenderer::new  Could not load file , because: {}", e));
-//                gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
-//                                1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]))
-//            }
-//        };
-
         gl.tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as gl::GLint, 1 as gl::GLsizei,
                         1 as gl::GLsizei, 0, gl::RGB, gl::UNSIGNED_BYTE, Some(&[128]));
+
+        jni_interface::load_png_from_assets(gl::TEXTURE_2D as i32, "trigrid.png");
 
         gl.generate_mipmap(gl::TEXTURE_2D);
 
         gl.bind_texture(gl::TEXTURE_2D, 0);
-
-        //        util::CheckGlError("plane_renderer::InitializeGlContent()");
 
         PlaneRenderer {
             vertices_: Vec::new(),
@@ -161,10 +110,10 @@ impl PlaneRenderer {
     }
 
     pub fn draw(&mut self, gl: &gl::Gl, projection_mat: ::glm::Mat4, view_mat: ::glm::Mat4, session: *const ArSession, plane: *const ArPlane, color: ::glm::Vec3) {
-        write_log("arcore_jni::plane_renderer::on_draw");
+        log::d("arcore::plane_renderer::on_draw");
 
         if self.shader_program_ == 0 {
-            write_log("arcore_jni::plane_renderer::on_draw shader_program is null.");
+            log::e("arcore::plane_renderer::on_draw shader_program is null.");
             return;
         }
 
@@ -184,16 +133,7 @@ impl PlaneRenderer {
                                         self.model_mat_[8], self.model_mat_[9], self.model_mat_[10], self.model_mat_[11],
                                         self.model_mat_[12], self.model_mat_[13], self.model_mat_[14], self.model_mat_[15]);
 
-        let mvp = projection_mat * view_mat * model_mat;
-        let mvp_array_vec4 = mvp.as_array();
-
-        let mut mvp_array: Vec<f32> = Vec::new();
-
-        for i in 0..mvp_array_vec4.len() {
-            for j in 0..4 {
-                mvp_array.push(mvp_array_vec4[i][j]);
-            }
-        }
+        let mvp_array = util::get_array_from_mat4(projection_mat * view_mat * model_mat);
 
         gl.uniform_matrix_4fv(self.uniform_mvp_mat_ as i32, false, &mvp_array);
 
@@ -216,7 +156,7 @@ impl PlaneRenderer {
     }
 
     pub fn update_for_plane(&mut self, session: *const ArSession, plane: *const ArPlane) {
-        write_log("arcore_jni::PlaneRenderer::update_for_plane");
+        log::d("arcore::PlaneRenderer::update_for_plane");
 
         unsafe {
             self.vertices_.clear();
@@ -225,12 +165,12 @@ impl PlaneRenderer {
             let mut polygon_length: i32 = 0;
             ArPlane_getPolygonSize(session, plane, &mut polygon_length as *mut i32);
             if polygon_length == 0 {
-                write_log("arcore_jni::PlaneRenderer::update_for_plane no valid plane polygon is found.");
+                log::e("arcore::PlaneRenderer::update_for_plane no valid plane polygon is found.");
             }
 
             let mut vertices_size: usize = (polygon_length / 2) as usize;
 
-            write_log(&format!("arcore_jni::PlaneRenderer::update_for_plane polygon_length = {}, vertices_size =  {}", polygon_length, vertices_size));
+            log::d(&format!("arcore::PlaneRenderer::update_for_plane polygon_length = {}, vertices_size =  {}", polygon_length, vertices_size));
 
             let mut raw_vertices_f32: Vec<f32> = Vec::with_capacity(polygon_length as usize);
             raw_vertices_f32.set_len(polygon_length as usize);
@@ -279,8 +219,6 @@ impl PlaneRenderer {
                 self.vertices_.push(::glm::vec3(result_v.x, result_v.y, 1.0));
             }
 
-            write_log("arcore_jni::PlaneRenderer::update_for_plane E");
-
             let vertices_length = self.vertices_.len();
             let half_vertices_length = vertices_length / 2;
             // Generate triangle (4, 5, 6) and (4, 6, 7).
@@ -300,8 +238,8 @@ impl PlaneRenderer {
                 self.triangles_.push(((i + 1) % half_vertices_length) as u16);
                 self.triangles_.push(((i + half_vertices_length + 1) % half_vertices_length + half_vertices_length) as u16);
             }
-            write_log(&format!("arcore_jni::PlaneRenderer::update_for_plane self.vertices_ : {:?}", self.vertices_));
-            write_log(&format!("arcore_jni::PlaneRenderer::update_for_plane self.triangles_ : {:?}", self.triangles_));
+            log::d(&format!("arcore::PlaneRenderer::update_for_plane self.vertices_ : {:?}", self.vertices_));
+            log::d(&format!("arcore::PlaneRenderer::update_for_plane self.triangles_ : {:?}", self.triangles_));
         }
     }
 }

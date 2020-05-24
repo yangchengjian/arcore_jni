@@ -30,22 +30,25 @@ use android_injected_glue::ffi::jmethodID;
 use android_injected_glue::ffi::jobject;
 use android_injected_glue::ffi::jstring;
 use android_injected_glue::get_app;
-use android_injected_glue::write_log;
 
+use log;
 
 static mut STATIC_JVM: *mut JavaVM = std::ptr::null_mut();
 
 static mut JNI_CLASS_JNI_INTERFACE_ID: jclass = std::ptr::null_mut();
 static mut JNI_METHOD_LOAD_IMAGE_ID: jmethodID = std::ptr::null_mut();
+static mut JNI_METHOD_LOAD_TEXTURE_ID: jmethodID = std::ptr::null_mut();
 
 const JNI_CLASS_JNI_INTERFACE: &str = "org/mozilla/servo/JniInterface";
 const JNI_METHOD_LOAD_IMAGE_NAME: &str = "loadImage";
 const JNI_METHOD_LOAD_IMAGE_ARGS: &str = "(Ljava/lang/String;)Landroid/graphics/Bitmap;";
+const JNI_METHOD_LOAD_TEXTURE_NAME: &str = "loadTexture";
+const JNI_METHOD_LOAD_TEXTURE_ARGS: &str = "(ILandroid/graphics/Bitmap;)V";
 
 #[no_mangle]
 #[allow(non_snake_case)]
 unsafe fn JNI_OnLoad(jvm: *mut JavaVM, _reserved: *mut c_void) -> jint {
-    write_log("arcore_jni::jni_interface::JNI_OnLoad");
+    log::i("arcore::jni_interface::JNI_OnLoad");
 
     STATIC_JVM = jvm;
     initialize_method_ids();
@@ -55,7 +58,7 @@ unsafe fn JNI_OnLoad(jvm: *mut JavaVM, _reserved: *mut c_void) -> jint {
 #[no_mangle]
 #[allow(non_snake_case)]
 unsafe fn JNI_OnUnload(jvm: *mut JavaVM, _reserved: *mut c_void) {
-    write_log("arcore_jni::jni_interface::JNI_OnUnload");
+    log::i("arcore::jni_interface::JNI_OnUnload");
 
     release_method_ids();
 }
@@ -63,13 +66,13 @@ unsafe fn JNI_OnUnload(jvm: *mut JavaVM, _reserved: *mut c_void) {
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[no_mangle]
-pub unsafe extern fn Java_org_mozilla_servoview_JNIServo_initAssetManager(env: *mut JavaVM, _: jni::objects::JClass, context: jobject) {
-    write_log("Java_org_mozilla_servoview_JNIServo_initAssetManager");
+pub unsafe extern fn Java_org_mozilla_servoview_JNIServo_initAssetManager(env: *mut JavaVM, _: *mut jclass, context: *mut jobject) {
+    log::i("Java_org_mozilla_servoview_JNIServo_initAssetManager");
 }
 
 /// Init Jni to get Env and jobject
 pub fn init_jni() -> (*mut JNIEnv, jobject) {
-    write_log("arcore_jni::jni_interface::AndroidBitmapInfo");
+    log::d("arcore::jni_interface::init_jni");
 
     let app: &mut android_app = get_app();
     let activity: *const ANativeActivity = unsafe { (*app).activity };
@@ -84,7 +87,7 @@ pub fn init_jni() -> (*mut JNIEnv, jobject) {
     let attach = unsafe { (*jni_invoke_interface).AttachCurrentThread };
     attach(vm, &mut env, std::ptr::null_mut());
 
-    write_log(&format!("arcore_jni::jni_interface::init_jni env =  {:?}", &env));
+    log::d(&format!("arcore::jni_interface::init_jni env =  {:?}", &env));
 
     (env, obj as jobject)
 }
@@ -95,10 +98,10 @@ pub fn load_image_from_assets(path: &str,
                               out_height: &mut u32,
                               out_stride: &mut u32,
                               out_pixel_buffer: *mut *mut u8) -> bool {
-    write_log("arcore_jni::jni_interface::load_image_from_assets");
+    log::d("arcore::jni_interface::load_image_from_assets");
 
     let image_obj = call_java_load_image(path);
-    write_log(&format!("arcore_jni::jni_interface::load_image_from_assets image_obj =  {:?}", &image_obj));
+    log::d(&format!("arcore::jni_interface::load_image_from_assets image_obj =  {:?}", &image_obj));
 
     let android_bitmap_getinfo = AndroidBitmap_getInfo;
     let android_bitmap_lockpixels = AndroidBitmap_lockPixels;
@@ -111,7 +114,7 @@ pub fn load_image_from_assets(path: &str,
 
     unsafe { android_bitmap_getinfo(env, image_obj, &bitmap_info as *const AndroidBitmapInfo as *mut AndroidBitmapInfo); }
 
-    write_log(&format!("arcore_jni::jni_interface::load_image_from_assets bitmap_info =  {:?}", &bitmap_info as *const AndroidBitmapInfo));
+    log::e(&format!("arcore::jni_interface::load_image_from_assets bitmap_info =  {:?}", &bitmap_info as *const AndroidBitmapInfo));
 
     // Attention: We are only going to support RGBA_8888 format in this sample.
 
@@ -124,23 +127,23 @@ pub fn load_image_from_assets(path: &str,
 
         unsafe {
             if android_bitmap_lockpixels(env, image_obj, &mut jvm_buffer as *mut *mut c_void) != 0 {
-                write_log("arcore_jni::jni_interface::load_image_from_assets android_bitmap_lockpixels failed");
+                log::e("arcore::jni_interface::load_image_from_assets android_bitmap_lockpixels failed");
                 return false;
             }
         }
 
-        write_log(&format!("arcore_jni::jni_interface::load_image_from_assets jvm_buffer =  {:?}", &jvm_buffer));
+        log::d(&format!("arcore::jni_interface::load_image_from_assets jvm_buffer =  {:?}", &jvm_buffer));
 
         let buf_size = bitmap_info.width * bitmap_info.stride;
 
         unsafe { *out_pixel_buffer = jvm_buffer as *mut u8 };
 
-        write_log(&format!("arcore_jni::jni_interface::load_image_from_assets pixel_buffer =  {:?}", &out_pixel_buffer));
+        log::d(&format!("arcore::jni_interface::load_image_from_assets pixel_buffer =  {:?}", &out_pixel_buffer));
 
         // release jvm_buffer back to JVM
         unsafe {
             if android_bitmap_unlockpixels(env, image_obj) != 0 {
-                write_log("arcore_jni::jni_interface::load_image_from_assets android_bitmap_unlockpixels failed");
+                log::e("arcore::jni_interface::load_image_from_assets android_bitmap_unlockpixels failed");
                 return false;
             }
         }
@@ -150,17 +153,24 @@ pub fn load_image_from_assets(path: &str,
     true
 }
 
-fn initialize_method_ids() {
-//    write_log(&format!("arcore_jni::jni_interface::call_java_load_image JNI_CLASS_JNI_INTERFACE =  {:?}", &JNI_CLASS_JNI_INTERFACE));
-//    write_log(&format!("arcore_jni::jni_interface::call_java_load_image JNI_METHOD_LOAD_IMAGE_NAME =  {:?}", &JNI_METHOD_LOAD_IMAGE_NAME));
-//    write_log(&format!("arcore_jni::jni_interface::call_java_load_image JNI_METHOD_LOAD_IMAGE_ARGS =  {:?}", &JNI_METHOD_LOAD_IMAGE_ARGS));
 
+pub fn load_png_from_assets(target: i32, path: &str) -> bool {
+    let env = get_jni_env();
+
+    let image_obj = call_java_load_image(path);
+    log::d(&format!("arcore::jni_interface::load_png_from_assets image_obj =  {:?}", &image_obj));
+    unsafe {
+        call_static_void_method(JNI_CLASS_JNI_INTERFACE_ID, JNI_METHOD_LOAD_TEXTURE_ID, target, image_obj);
+    }
+    true
+}
+
+
+fn initialize_method_ids() {
     unsafe {
         JNI_CLASS_JNI_INTERFACE_ID = find_class(JNI_CLASS_JNI_INTERFACE);
-        write_log(&format!("arcore_jni::jni_interface::initialize_method_ids JNI_CLASS_JNI_INTERFACE_ID =  {:?}", &JNI_CLASS_JNI_INTERFACE_ID));
-
         JNI_METHOD_LOAD_IMAGE_ID = get_static_method_id(JNI_CLASS_JNI_INTERFACE_ID, JNI_METHOD_LOAD_IMAGE_NAME, JNI_METHOD_LOAD_IMAGE_ARGS);
-        write_log(&format!("arcore_jni::jni_interface::initialize_method_ids JNI_METHOD_LOAD_IMAGE_ID =  {:?}", &JNI_METHOD_LOAD_IMAGE_ID));
+        JNI_METHOD_LOAD_TEXTURE_ID = get_static_method_id(JNI_CLASS_JNI_INTERFACE_ID, JNI_METHOD_LOAD_TEXTURE_NAME, JNI_METHOD_LOAD_TEXTURE_ARGS);
     }
 }
 
@@ -168,40 +178,29 @@ fn release_method_ids() {
     unsafe {
         JNI_CLASS_JNI_INTERFACE_ID = std::ptr::null_mut();
         JNI_METHOD_LOAD_IMAGE_ID = std::ptr::null_mut();
+        JNI_METHOD_LOAD_TEXTURE_ID = std::ptr::null_mut();
     }
 }
 
 fn call_java_load_image(path: &str) -> jobject {
-    write_log(&format!("arcore_jni::jni_interface::call_java_load_image path = {}", path));
+    log::d(&format!("arcore::jni_interface::call_java_load_image path = {}", path));
 
 
     let jni_path = new_string_utf(path);
-    write_log(&format!("arcore_jni::jni_interface::call_java_load_image jni_path =  {:?}", &jni_path));
+    log::e(&format!("arcore::jni_interface::call_java_load_image jni_path =  {:?}", &jni_path));
 
     unsafe { call_static_object_method(JNI_CLASS_JNI_INTERFACE_ID, JNI_METHOD_LOAD_IMAGE_ID, jni_path) }
 }
 
 fn get_jni_env() -> *mut JNIEnv {
-    write_log("arcore_jni::jni_interface::get_jni_env");
-
-//
-//    let app: &mut android_app = get_app();
-//    let activity: *const ANativeActivity = unsafe { (*app).activity };
-//
-//    let vm: *mut JavaVM = unsafe { (*activity).vm };
-//    let mut env: *mut JNIEnv = unsafe { (*activity).env };
-//
-//    let jni_invoke_interface: *const JNIInvokeInterface = unsafe { (*vm).functions };
-//
-//    let attach = unsafe { (*jni_invoke_interface).AttachCurrentThread };
-//    attach(vm, &mut env, std::ptr::null_mut());
+    log::d("arcore::jni_interface::get_jni_env");
 
     let mut env: *mut JNIEnv = std::ptr::null_mut();
     let jni_invoke_interface: *const JNIInvokeInterface = unsafe { (*STATIC_JVM).functions };
     let attach = unsafe { (*jni_invoke_interface).AttachCurrentThread };
     unsafe { attach(STATIC_JVM, &mut env, std::ptr::null_mut()) };
 
-    write_log(&format!("arcore_jni::jni_interface::get_jni_env env =  {:?}", &env));
+    log::d(&format!("arcore::jni_interface::get_jni_env env =  {:?}", &env));
 
     env
 }
@@ -256,8 +255,16 @@ fn call_static_object_method(class_id: jclass, method_id: jmethodID, args: jstri
     call_static_object_method_0(env, class_id, method_id, args)
 }
 
+fn call_static_void_method(class_id: jclass, method_id: jmethodID, arg1: i32, arg2: jobject) {
+    let env = get_jni_env();
+    let jni_native_interface: *const JNINativeInterface = unsafe { (*env).functions };
+
+    let call_static_void_method_0 = unsafe { (*jni_native_interface).CallStaticVoidMethod };
+    call_static_void_method_0(env, class_id, method_id, arg1, arg2)
+}
+
 fn get_asset_manager() -> *mut AAssetManager {
-    write_log("arcore_jni::jinterface::get_asset_manager");
+    log::d("arcore::jinterface::get_asset_manager");
 
     unsafe {
         let app: &mut android_app = get_app();
@@ -275,7 +282,7 @@ fn get_asset_manager() -> *mut AAssetManager {
 }
 
 fn get_asset(file: &str) -> *mut AAsset {
-    write_log("arcore_jni::jinterface::get_asset");
+    log::d("arcore::jinterface::get_asset");
     unsafe {
         let c_str_file = CString::new(file).unwrap();
 
@@ -285,7 +292,7 @@ fn get_asset(file: &str) -> *mut AAsset {
 }
 
 fn asset_read(file: &str) -> Vec<u8> {
-    write_log("arcore_jni::jinterface::asset_read");
+    log::d("arcore::jinterface::asset_read");
     unsafe {
         let mut result = Vec::new();
 
@@ -306,34 +313,3 @@ fn asset_read(file: &str) -> Vec<u8> {
         result
     }
 }
-
-//pub fn call_java(class: &str, method: &str, args: &str) {
-//    write_log(&format!("arcore_jni::jni_interface::call_java class =  {:?}, method = {:?}, args = {:?}", &class, &method, &args));
-//
-//    let jvm_args = jni::InitArgsBuilder::new()
-//        .version(jni::JNIVersion::V8)
-//        .option("-Xcheck:jni")
-//        .build()
-//        .unwrap();
-//
-//    let jvm = jni::JavaVM::new(jvm_args).unwrap();
-//    let guard = jvm.attach_current_thread().unwrap();
-//
-//    let system = guard.find_class(class).unwrap();
-//
-//    let out = guard
-//        .get_static_field(system, method, args)
-//        .unwrap();
-//
-//    if let jni::objects::JValue::Object(out) = out {
-//        let message = guard.new_string("Hello World").unwrap();
-//        guard
-//            .call_method(
-//                out,
-//                "println",
-//                "(Ljava/lang/String;)V",
-//                &[jni::objects::JValue::Object(message.into())],
-//            )
-//            .unwrap();
-//    }
-//}
