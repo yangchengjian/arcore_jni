@@ -38,7 +38,7 @@ pub fn init_arcore() -> ArCore {
     ArCore::new(env, context)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ColoredAnchor {
     anchor: *mut ArAnchor,
     color: [f32; 4],
@@ -138,11 +138,21 @@ impl ArCore {
         }
     }
 
+    pub fn get_view_model_mat_on_plane_by_index(&mut self, index: i32) -> [f32; 16] {
+        log::i(&format!("arcore::lib::get_view_model_mat_on_plane_by_index index : {:?}", index));
+        let mode_mat4x4 = self.get_model_mat_on_plane_by_index(index);
+        let vm = util::get_mat4_from_array(self.get_view_matrix()) * util::get_mat4_from_array(mode_mat4x4);
+        log::print_matrix("arcore::lib::get_view_model_mat_on_plane_by_index v * m", &util::get_array_from_mat4(vm));
+        util::get_array_from_mat4(vm)
+    }
+
     pub fn get_view_matrix(&self) -> [f32; 16] {
+        log::print_matrix("arcore::lib::::get_view_matrix", &self.view_mat4x4);
         self.view_mat4x4
     }
 
     pub fn get_proj_matrix(&self) -> [f32; 16] {
+        log::print_matrix("arcore::lib::::get_proj_matrix", &self.proj_mat4x4);
         self.proj_mat4x4
     }
 
@@ -151,6 +161,7 @@ impl ArCore {
         let mut mode_mat4x4 = [0.0; 16];
         match self.plane_obj_map_.get(&index) {
             Some(colored_anchor) => {
+                log::d(&format!("arcore::lib::get_model_mat_on_plane_by_index colored_anchor : {:?}", &colored_anchor));
                 let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
                 unsafe { ArAnchor_getTrackingState(self.ar_session as *const ArSession, colored_anchor.anchor, &mut tracking_state as *mut ArTrackingState) };
                 if tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
@@ -247,9 +258,6 @@ impl ArCore {
                 let p = util::get_mat4_from_array(self.proj_mat4x4);
                 let v = util::get_mat4_from_array(self.view_mat4x4);
 
-                log::print_matrix("arcore::lib::::on_draw Matrix View", &self.view_mat4x4);
-                log::print_matrix("arcore::lib::::on_draw Matrix Proj", &self.proj_mat4x4);
-
                 self.clone().renderer_background_.unwrap().draw(gl, self.ar_session as *const ArSession, self.ar_frame as *const ArFrame);
 
                 self.update_and_render_point_cloud(gl, p * v);
@@ -262,7 +270,7 @@ impl ArCore {
     }
 
     pub fn update_proj_view_matrix(&mut self) {
-        log::i("arcore::lib::get_matrix");
+        log::i("arcore::lib::update_proj_view_matrix");
         unsafe {
             let mut out_camera: *mut ArCamera = ::std::ptr::null_mut();
             ArFrame_acquireCamera(self.ar_session, self.ar_frame, &mut out_camera);
@@ -280,6 +288,7 @@ impl ArCore {
     }
 
     pub fn update_and_render_point_cloud(&mut self, gl: &gl::Gl, mvp_matrix: ::glm::Mat4) {
+        log::i("arcore::lib::update_and_render_point_cloud");
         // Update and render point cloud.
         unsafe {
             let mut ar_point_cloud: *mut ArPointCloud = ::std::ptr::null_mut();
@@ -296,6 +305,7 @@ impl ArCore {
     }
 
     pub fn track_planes(&mut self, gl: &gl::Gl) {
+        log::i("arcore::lib::track_planes");
         // Update loop, in onDraw
         unsafe {
 
@@ -303,7 +313,7 @@ impl ArCore {
             let mut plane_list: *mut ArTrackableList = ::std::ptr::null_mut();
             ArTrackableList_create(self.ar_session as *const ArSession, &mut plane_list);
             if plane_list == ::std::ptr::null_mut() {
-                log::e("arcore::lib::on_draw plane_list is null");
+                log::e("arcore::lib::track_planes plane_list is null");
             }
 
             let plane_tracked_type: ArTrackableType = AR_TRACKABLE_PLANE as i32;
@@ -314,7 +324,7 @@ impl ArCore {
                                     plane_list as *const ArTrackableList,
                                     &mut plane_list_size as *mut i32);
 
-            log::i(&format!("arcore::lib::on_draw plane_list_size : {:?}", plane_list_size));
+            log::i(&format!("arcore::lib::track_planes plane_list_size : {:?}", plane_list_size));
 
             for i in 0..plane_list_size {
                 let mut ar_trackable: *mut ArTrackable = ::std::ptr::null_mut();
@@ -418,6 +428,8 @@ impl ArCore {
                     color[3] = 255.0;
 
                     let colored_anchor = ColoredAnchor { anchor: image_anchor, color };
+
+                    log::d(&format!("arcore::lib::track_images colored_anchor : {:?}", &colored_anchor));
 
                     let index = self.image_obj_map_.len() as i32 + 1;
                     self.image_obj_map_.insert(index, colored_anchor);
@@ -529,6 +541,7 @@ impl ArCore {
                         ArPose_destroy(ar_pose);
 
                         if in_polygon != 0 {
+                            log::e(&format!("arcore::lib::on_touched in_polygon = {}", in_polygon));
                             return -1;
                         }
 
@@ -547,6 +560,7 @@ impl ArCore {
                                                   &mut tracking_state as *mut ArTrackingState);
 
                         if tracking_state != AR_TRACKING_STATE_TRACKING as i32 {
+                            log::e(&format!("arcore::lib::on_touched tracking_state = {}", tracking_state));
                             ArAnchor_release(anchor);
                             return -1;
                         }
@@ -556,8 +570,9 @@ impl ArCore {
                             self.number_to_render -= 1;
                         }
 
-                        let mut color = [0.0, 0.0, 0.0, 0.0];
+                        log::d(&format!("arcore::lib::on_touched number_to_render: {}", self.number_to_render));
 
+                        let mut color = [0.0, 0.0, 0.0, 0.0];
                         match trackable_type as u32 {
                             AR_TRACKABLE_POINT => {
                                 color[0] = 66.0;
@@ -581,9 +596,13 @@ impl ArCore {
 
                         let colored_anchor = ColoredAnchor { anchor, color };
 
-                        let index = self.plane_obj_map_.len() as i32 + 1;
+                        log::d(&format!("arcore::lib::on_touched colored_anchor: {:?}", &colored_anchor));
+
+                        let index = self.plane_obj_map_.len() as i32;
                         self.plane_obj_map_.insert(index, colored_anchor);
                         self.number_to_render += 1;
+
+                        log::d(&format!("arcore::lib::on_touched index: {}", index));
 
                         return index;
                     } else if AR_TRACKABLE_POINT as i32 == ar_trackable_type {
