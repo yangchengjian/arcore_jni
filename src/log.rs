@@ -39,5 +39,5 @@ pub fn log(level: i32, message: &str) {
 }
 
 pub fn print_matrix(tag: &str, mat: &[f32]) {
-    d(&format!("arcore::log::print_matrix {} : {:?}", tag, mat));
+    d(&format!("{} : {:?}", tag, mat));
 }

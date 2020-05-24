@@ -147,7 +147,7 @@ impl ArCore {
     }
 
     pub fn get_model_mat_on_plane_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i("arcore::lib::get_model_mat_on_plane_by_index");
+        log::i(&format!("arcore::lib::get_model_mat_on_plane_by_index index : {:?}", index));
         let mut mode_mat4x4 = [0.0; 16];
         match self.plane_obj_map_.get(&index) {
             Some(colored_anchor) => {
@@ -159,11 +159,12 @@ impl ArCore {
             }
             None => {}
         }
+        log::print_matrix("arcore::lib::get_model_mat_on_plane_by_index Matrix Model", &mode_mat4x4);
         mode_mat4x4
     }
 
     pub fn get_model_mat_on_point_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i("arcore::lib::get_model_mat_on_point_by_index");
+        log::i(&format!("arcore::lib::get_model_mat_on_point_by_index index : {:?}", index));
         let mut mode_mat4x4 = [0.0; 16];
         match self.point_obj_map_.get(&index) {
             Some(colored_anchor) => {
@@ -175,11 +176,12 @@ impl ArCore {
             }
             None => {}
         }
+        log::print_matrix("arcore::lib::get_model_mat_on_point_by_index Matrix Model", &mode_mat4x4);
         mode_mat4x4
     }
 
     pub fn get_model_mat_on_image_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i("arcore::lib::get_model_mat_on_images_by_index");
+        log::i(&format!("arcore::lib::get_model_mat_on_image_by_index index : {:?}", index));
         let mut mode_mat4x4 = [0.0; 16];
         match self.image_obj_map_.get(&index) {
             Some(colored_anchor) => {
@@ -191,11 +193,12 @@ impl ArCore {
             }
             None => {}
         }
+        log::print_matrix("arcore::lib::get_model_mat_on_image_by_index Matrix Model", &mode_mat4x4);
         mode_mat4x4
     }
 
     pub fn get_model_mat_on_faces_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i("arcore::lib::get_model_mat_on_faces_by_index");
+        log::i(&format!("arcore::lib::get_model_mat_on_faces_by_index index : {:?}", index));
         let mut mode_mat4x4 = [0.0; 16];
         match self.faces_obj_map_.get(&index) {
             Some(colored_anchor) => {
@@ -207,6 +210,7 @@ impl ArCore {
             }
             None => {}
         }
+        log::print_matrix("arcore::lib::get_model_mat_on_faces_by_index Matrix Model", &mode_mat4x4);
         mode_mat4x4
     }
 
@@ -243,8 +247,8 @@ impl ArCore {
                 let p = util::get_mat4_from_array(self.proj_mat4x4);
                 let v = util::get_mat4_from_array(self.view_mat4x4);
 
-                log::print_matrix("Matrix View", &self.view_mat4x4);
-                log::print_matrix("Matrix Proj", &self.proj_mat4x4);
+                log::print_matrix("arcore::lib::::on_draw Matrix View", &self.view_mat4x4);
+                log::print_matrix("arcore::lib::::on_draw Matrix Proj", &self.proj_mat4x4);
 
                 self.clone().renderer_background_.unwrap().draw(gl, self.ar_session as *const ArSession, self.ar_frame as *const ArFrame);
 

@@ -76,10 +76,7 @@ impl PointCloudRenderer {
                 return;
             }
 
-
             let mut point_cloud_data: *const f32 = 0 as *const f32;
-
-
             ArPointCloud_getData(ar_session as *const ArSession,
                                  ar_point_cloud as *const ArPointCloud,
                                  &mut point_cloud_data);
@@ -87,15 +84,7 @@ impl PointCloudRenderer {
 
             let mut point_cloud_vertexs = ::std::slice::from_raw_parts(point_cloud_data, number_of_points * 4);
 
-            let mvp_array_vec4 = mvp_matrix.as_array();
-
-            let mut mvp_array: Vec<f32> = Vec::new();
-
-            for i in 0..mvp_array_vec4.len() {
-                for j in 0..4 {
-                    mvp_array.push(mvp_array_vec4[i][j]);
-                }
-            }
+            let mvp_array = util::get_array_from_mat4(mvp_matrix);
 
             log::d(&format!("arcore::point_cloud_renderer::draw mvp_array : {:?}", mvp_array));
             log::d(&format!("arcore::point_cloud_renderer::draw point_cloud_vertexs : {:?}", point_cloud_vertexs));
