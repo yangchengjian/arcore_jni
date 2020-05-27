@@ -138,12 +138,9 @@ impl ArCore {
         }
     }
 
-    pub fn get_view_model_mat_on_plane_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i(&format!("arcore::lib::get_view_model_mat_on_plane_by_index index : {:?}", index));
-        let mode_mat4x4 = self.get_model_mat_on_plane_by_index(index);
-        let vm = util::get_mat4_from_array(self.get_view_matrix()) * util::get_mat4_from_array(mode_mat4x4);
-        log::print_matrix("arcore::lib::get_view_model_mat_on_plane_by_index v * m", &util::get_array_from_mat4(vm));
-        util::get_array_from_mat4(vm)
+    pub fn get_proj_matrix(&self) -> [f32; 16] {
+        log::print_matrix("arcore::lib::::get_proj_matrix", &self.proj_mat4x4);
+        self.proj_mat4x4
     }
 
     pub fn get_view_matrix(&self) -> [f32; 16] {
@@ -151,33 +148,27 @@ impl ArCore {
         self.view_mat4x4
     }
 
-    pub fn get_proj_matrix(&self) -> [f32; 16] {
-        log::print_matrix("arcore::lib::::get_proj_matrix", &self.proj_mat4x4);
-        self.proj_mat4x4
-    }
-
-    pub fn get_model_mat_on_plane_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i(&format!("arcore::lib::get_model_mat_on_plane_by_index index : {:?}", index));
-        let mut mode_mat4x4 = [0.0; 16];
-        match self.plane_obj_map_.get(&index) {
-            Some(colored_anchor) => {
-                log::d(&format!("arcore::lib::get_model_mat_on_plane_by_index colored_anchor : {:?}", &colored_anchor));
-                let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
-                unsafe { ArAnchor_getTrackingState(self.ar_session as *const ArSession, colored_anchor.anchor, &mut tracking_state as *mut ArTrackingState) };
-                if tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
-                    get_transform_matrix_from_anchor(self.ar_session, colored_anchor.anchor, mode_mat4x4.as_mut_ptr())
-                }
-            }
-            None => {}
+    // 1: plane, 2: point, 3: images, 4: faces
+    pub fn get_mode_matrix(&self, track_type: i32, index: i32) -> [f32; 16] {
+        match track_type {
+            1 => self.get_matrix_by_anchor_and_index(&self.plane_obj_map_, index),
+            2 => self.get_matrix_by_anchor_and_index(&self.point_obj_map_, index),
+            3 => self.get_matrix_by_anchor_and_index(&self.image_obj_map_, index),
+            4 => self.get_matrix_by_anchor_and_index(&self.faces_obj_map_, index),
+            _ => self.get_matrix_by_anchor_and_index(&self.plane_obj_map_, index),
         }
-        log::print_matrix("arcore::lib::get_model_mat_on_plane_by_index Matrix Model", &mode_mat4x4);
-        mode_mat4x4
     }
 
-    pub fn get_model_mat_on_point_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i(&format!("arcore::lib::get_model_mat_on_point_by_index index : {:?}", index));
+    pub fn get_view_mode_matrix(&self, track_type: i32, index: i32) -> [f32; 16] {
+        let mode_mat4x4 = self.get_mode_matrix(track_type, index);
+        let vm = util::get_mat4_from_array(self.get_view_matrix()) * util::get_mat4_from_array(mode_mat4x4);
+        log::print_matrix("arcore::lib::get_view_mode_matrix", &util::get_array_from_mat4(vm));
+        util::get_array_from_mat4(vm)
+    }
+
+    fn get_matrix_by_anchor_and_index(&self, obj_map: &HashMap<i32, ColoredAnchor>, index: i32) -> [f32; 16] {
         let mut mode_mat4x4 = [0.0; 16];
-        match self.point_obj_map_.get(&index) {
+        match obj_map.get(&index) {
             Some(colored_anchor) => {
                 let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
                 unsafe { ArAnchor_getTrackingState(self.ar_session as *const ArSession, colored_anchor.anchor, &mut tracking_state as *mut ArTrackingState) };
@@ -187,41 +178,6 @@ impl ArCore {
             }
             None => {}
         }
-        log::print_matrix("arcore::lib::get_model_mat_on_point_by_index Matrix Model", &mode_mat4x4);
-        mode_mat4x4
-    }
-
-    pub fn get_model_mat_on_image_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i(&format!("arcore::lib::get_model_mat_on_image_by_index index : {:?}", index));
-        let mut mode_mat4x4 = [0.0; 16];
-        match self.image_obj_map_.get(&index) {
-            Some(colored_anchor) => {
-                let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
-                unsafe { ArAnchor_getTrackingState(self.ar_session as *const ArSession, colored_anchor.anchor, &mut tracking_state as *mut ArTrackingState) };
-                if tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
-                    get_transform_matrix_from_anchor(self.ar_session, colored_anchor.anchor, mode_mat4x4.as_mut_ptr())
-                }
-            }
-            None => {}
-        }
-        log::print_matrix("arcore::lib::get_model_mat_on_image_by_index Matrix Model", &mode_mat4x4);
-        mode_mat4x4
-    }
-
-    pub fn get_model_mat_on_faces_by_index(&mut self, index: i32) -> [f32; 16] {
-        log::i(&format!("arcore::lib::get_model_mat_on_faces_by_index index : {:?}", index));
-        let mut mode_mat4x4 = [0.0; 16];
-        match self.faces_obj_map_.get(&index) {
-            Some(colored_anchor) => {
-                let mut tracking_state: ArTrackingState = AR_TRACKING_STATE_STOPPED as i32;
-                unsafe { ArAnchor_getTrackingState(self.ar_session as *const ArSession, colored_anchor.anchor, &mut tracking_state as *mut ArTrackingState) };
-                if tracking_state == AR_TRACKING_STATE_TRACKING as i32 {
-                    get_transform_matrix_from_anchor(self.ar_session, colored_anchor.anchor, mode_mat4x4.as_mut_ptr())
-                }
-            }
-            None => {}
-        }
-        log::print_matrix("arcore::lib::get_model_mat_on_faces_by_index Matrix Model", &mode_mat4x4);
         mode_mat4x4
     }
 
