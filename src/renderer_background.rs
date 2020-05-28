@@ -101,9 +101,7 @@ impl BackgroundRenderer {
 
     pub fn draw(&mut self, gl: &gl::Gl, session: *const ArSession, frame: *const ArFrame) {
         log::d("arcore::background_renderer::draw");
-
         unsafe {
-
             let mut x = 0;
             let geometry_changed: *mut i32 = &mut x;
             ArFrame_getDisplayGeometryChanged(session, frame, geometry_changed);
@@ -122,13 +120,6 @@ impl BackgroundRenderer {
             gl.uniform_1i(self.uniform_texture_ as i32, 1);
             gl.active_texture(gl::TEXTURE1);
             gl.bind_texture(TEXTURE_EXTERNAL_OES, self.texture_id_);
-
-
-//            gl.enable_vertex_attrib_array(self.attribute_vertices_);
-//            gl.vertex_attrib_pointer_ptr(self.attribute_vertices_, 3, false, 0, K_VERTICES.as_ptr() as *const gl::GLvoid);
-//
-//            gl.enable_vertex_attrib_array(self.attribute_uvs_);
-//            gl.vertex_attrib_pointer_ptr(self.attribute_uvs_, 2, false, 0, self.transformed_uvs_.as_ptr() as *const gl::GLvoid);
 
 
             let vbo = gl.gen_buffers(2);
@@ -153,7 +144,6 @@ impl BackgroundRenderer {
     }
 
     pub fn get_texture_id(&self) -> gl::types::GLuint {
-        log::d("arcore::background_renderer::get_texture_id");
         self.texture_id_.clone()
     }
 }
