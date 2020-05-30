@@ -41,9 +41,9 @@ impl PointCloudRenderer {
         let attribute_vertices_ = gl.get_attrib_location(shader_program, "vertex") as u32;
         let uniform_mvp_mat_ = gl.get_uniform_location(shader_program, "mvp") as u32;
 
-        log::d(&format!("arcore::point_cloud_renderer::new shader_program : {}", shader_program));
-        log::d(&format!("arcore::point_cloud_renderer::new attribute_vertices_ : {}", attribute_vertices_));
-        log::d(&format!("arcore::point_cloud_renderer::new uniform_mvp_mat_ : {}", uniform_mvp_mat_));
+//        log::d(&format!("arcore::point_cloud_renderer::new shader_program : {}", shader_program));
+//        log::d(&format!("arcore::point_cloud_renderer::new attribute_vertices_ : {}", attribute_vertices_));
+//        log::d(&format!("arcore::point_cloud_renderer::new uniform_mvp_mat_ : {}", uniform_mvp_mat_));
 
 
         PointCloudRenderer {
@@ -56,9 +56,9 @@ impl PointCloudRenderer {
     pub fn draw(&mut self, gl: &gl::Gl, mvp_matrix: ::glm::Mat4, ar_session: *mut ArSession, ar_point_cloud: *mut ArPointCloud) {
         log::d("arcore::point_cloud_renderer::draw");
 
-        log::d(&format!("arcore::point_cloud_renderer::draw self.shader_program_ : {}", self.shader_program_));
-        log::d(&format!("arcore::point_cloud_renderer::draw self.attribute_vertices_ : {}", self.attribute_vertices_));
-        log::d(&format!("arcore::point_cloud_renderer::draw self.uniform_mvp_mat_ : {}", self.uniform_mvp_mat_));
+//        log::d(&format!("arcore::point_cloud_renderer::draw self.shader_program_ : {}", self.shader_program_));
+//        log::d(&format!("arcore::point_cloud_renderer::draw self.attribute_vertices_ : {}", self.attribute_vertices_));
+//        log::d(&format!("arcore::point_cloud_renderer::draw self.uniform_mvp_mat_ : {}", self.uniform_mvp_mat_));
 
         unsafe {
             gl.use_program(self.shader_program_);
@@ -70,7 +70,7 @@ impl PointCloudRenderer {
                                            &mut number_of_points as *mut usize as *mut i32);
 
 
-            log::d(&format!("arcore::point_cloud_renderer::draw number_of_points : {:}", number_of_points));
+//            log::d(&format!("arcore::point_cloud_renderer::draw number_of_points : {:}", number_of_points));
 
             if number_of_points <= 0 {
                 return;
@@ -86,8 +86,8 @@ impl PointCloudRenderer {
 
             let mvp_array = util::get_array_from_mat4(mvp_matrix);
 
-            log::d(&format!("arcore::point_cloud_renderer::draw mvp_array : {:?}", mvp_array));
-            log::d(&format!("arcore::point_cloud_renderer::draw point_cloud_vertexs : {:?}", point_cloud_vertexs));
+//            log::d(&format!("arcore::point_cloud_renderer::draw mvp_array : {:?}", mvp_array));
+//            log::d(&format!("arcore::point_cloud_renderer::draw point_cloud_vertexs : {:?}", point_cloud_vertexs));
 
             gl.uniform_matrix_4fv(self.uniform_mvp_mat_ as i32, false, &mvp_array);
 

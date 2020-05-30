@@ -81,11 +81,11 @@ impl BackgroundRenderer {
 
             let transformed_uvs: [f32; 8] = [0.0; 8];
 
-            log::d(&format!("arcore::background_renderer::new shader_program : {}", shader_program));
-            log::d(&format!("arcore::background_renderer::new texture_id : {:?}", texture_id));
-            log::d(&format!("arcore::background_renderer::new uniform_texture : {}", uniform_texture));
-            log::d(&format!("arcore::background_renderer::new attribute_vertices : {}", attribute_vertices));
-            log::d(&format!("arcore::background_renderer::new attribute_uvs : {}", attribute_uvs));
+//            log::d(&format!("arcore::background_renderer::new shader_program : {}", shader_program));
+//            log::d(&format!("arcore::background_renderer::new texture_id : {:?}", texture_id));
+//            log::d(&format!("arcore::background_renderer::new uniform_texture : {}", uniform_texture));
+//            log::d(&format!("arcore::background_renderer::new attribute_vertices : {}", attribute_vertices));
+//            log::d(&format!("arcore::background_renderer::new attribute_uvs : {}", attribute_uvs));
 
             BackgroundRenderer {
                 shader_program_: shader_program,

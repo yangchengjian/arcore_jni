@@ -2,6 +2,7 @@
 extern crate android_injected_glue;
 extern crate glm;
 extern crate lodepng;
+extern crate nalgebra_glm;
 extern crate ndk_sys;
 extern crate rgb;
 extern crate sparkle;
@@ -237,11 +238,11 @@ impl ArCore {
 
                 self.render_point_cloud(gl, p * v);
 
-                //self.render_planes(gl);
+//                self.render_planes(gl);
 
                 ::augmented_image::track_images(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.image_obj_map_);
 
-                //::augmented_face::track_faces(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.faces_obj_map_);
+                ::augmented_face::track_faces(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.faces_obj_map_);
 
                 if self.loop_num % 10 == 0 {
                     log::d(&format!("arcore::lib::::on_draw loop_num = {}", &self.loop_num));
@@ -499,7 +500,7 @@ impl ArCore {
                 let p = util::get_mat4_from_array(self.proj_mat4x4);
                 let v = util::get_mat4_from_array(self.view_mat4x4);
 
-//                self.clone().renderer_plane_.unwrap().draw(gl, p, v, self.ar_session, ar_plane, ::glm::vec3(0.0, 0.0, 0.0));
+                self.clone().renderer_plane_.unwrap().draw(gl, p, v, self.ar_session, ar_plane, ::glm::vec3(255.0, 255.0, 255.0));
             }
 
             ArTrackableList_destroy(plane_list);
