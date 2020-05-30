@@ -200,3 +200,8 @@ pub fn get_mat4_from_array(array: [f32; 16]) -> glm::Mat4 {
               array[8], array[9], array[10], array[11],
               array[12], array[13], array[14], array[15])
 }
+
+
+pub fn yuv_2_bmp() {
+
+}

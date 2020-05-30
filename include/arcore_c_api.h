@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Google Inc. All Rights Reserved.
+ * Copyright 2017-2020 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,9 +117,23 @@
 
 /// @defgroup config Configuration
 /// Session configuration.
+///
+/// To configure an #ArSession:
+///
+/// 1. Use #ArConfig_create() to create an #ArConfig object.
+/// 2. Call any number of configuration functions on the newly created object.
+/// 3. To apply the configuration to the session, use #ArSession_configure().
+/// 4. To release the memory used by the #ArConfig object, use
+///    #ArConfig_destroy().
+///
+/// Note: None of the `ArConfig_set*()` functions will actually affect the state
+/// of the given #ArSession until #ArSession_configure() is called.
 
 /// @defgroup cameraconfig CameraConfig
 /// Camera configuration.
+
+/// @defgroup cameraconfigfilter CameraConfigFilter
+/// Filters available camera configurations.
 
 /// @defgroup frame Frame
 /// Per-frame state.
@@ -389,6 +403,8 @@ typedef struct ArAugmentedImage_ ArAugmentedImage;
 
 /// @}
 
+//                                image_segmentation_people)
+
 // Augmented Faces
 
 /// @addtogroup augmented_face
@@ -582,8 +598,7 @@ AR_DEFINE_ENUM(ArTrackableType){
 ///
 /// All currently defined features are mutually compatible.
 AR_DEFINE_ENUM(ArSessionFeature){
-    /// Indicates the end of a features list.  This must be the last entry in
-    /// the
+    /// Indicates the end of a features list. This must be the last entry in the
     /// array passed to ArSession_createWithFeatures().
     AR_SESSION_FEATURE_END_OF_LIST = 0,
 
@@ -647,8 +662,7 @@ AR_DEFINE_ENUM(ArStatus){
     /// To avoid this error, ensure that Session_checkSupported() returns true.
     AR_ERROR_UNSUPPORTED_CONFIGURATION = -8,
 
-    /// The Android camera permission was not granted prior to calling
-    /// ArSession_resume().
+    /// The application does not have Android camera permission.
     AR_ERROR_CAMERA_PERMISSION_NOT_GRANTED = -9,
 
     /// Acquire failed because the object being acquired was already released.
@@ -698,8 +712,8 @@ AR_DEFINE_ENUM(ArStatus){
     /// A function has been invoked at an illegal or inappropriate time. A
     /// message will be printed to logcat with additional details for the
     /// developer. For example, ArSession_resume() will return this status if
-    /// the camera configuration was changed and there are any unreleased
-    /// images.
+    /// the camera configuration was changed and there is at least one
+    /// unreleased image.
     AR_ERROR_ILLEGAL_STATE = -20,
 
     /// The ARCore APK is not installed on this device.
@@ -806,7 +820,7 @@ AR_DEFINE_ENUM(ArCloudAnchorState){
     AR_CLOUD_ANCHOR_STATE_ERROR_HOSTING_DATASET_PROCESSING_FAILED = -5,
 
     /// Resolving failed, because the ARCore Cloud Anchor service could not find
-    /// the provided cloud anchor ID.
+    /// the provided Cloud Anchor ID.
     AR_CLOUD_ANCHOR_STATE_ERROR_CLOUD_ID_NOT_FOUND = -6,
 
     AR_CLOUD_ANCHOR_STATE_ERROR_RESOLVING_LOCALIZATION_NO_MATCH AR_DEPRECATED(
@@ -831,6 +845,7 @@ AR_DEFINE_ENUM(ArCloudAnchorState){
     /// might affect the device's ability to connect to the ARCore Cloud Anchor
     /// service.
     AR_CLOUD_ANCHOR_STATE_ERROR_HOSTING_SERVICE_UNAVAILABLE = -10,
+
 };
 
 /// @ingroup arcoreapk
@@ -1008,12 +1023,12 @@ AR_DEFINE_ENUM(ArPointOrientationMode){
 /// @ingroup cloud
 /// Indicates the cloud configuration of the ::ArSession.
 AR_DEFINE_ENUM(ArCloudAnchorMode){
-    /// Anchor Hosting is disabled. This is the value set in the default
+    /// Cloud Anchors are disabled. This is the value set in the default
     /// ::ArConfig.
     AR_CLOUD_ANCHOR_MODE_DISABLED = 0,
-    /// Anchor Hosting is enabled. Setting this value and calling
-    /// @c ArSession_configure() will require that the application have the
-    /// Android INTERNET permission.
+    /// This mode will enable Cloud Anchors. Setting this value and calling @c
+    /// ArSssion_configure() will require the application to have the Android
+    /// INTERNET permission.
     AR_CLOUD_ANCHOR_MODE_ENABLED = 1,
 };
 
@@ -1321,7 +1336,7 @@ void ArConfig_setUpdateMode(const ArSession *session,
                             ArConfig *config,
                             ArUpdateMode update_mode);
 
-/// Gets the current cloud anchor mode from the ::ArConfig.
+/// Gets the current Cloud Anchor mode from the ::ArConfig.
 void ArConfig_getCloudAnchorMode(const ArSession *session,
                                  const ArConfig *config,
                                  ArCloudAnchorMode *out_cloud_anchor_mode);
@@ -1351,6 +1366,8 @@ void ArConfig_getAugmentedImageDatabase(
     const ArSession *session,
     const ArConfig *config,
     ArAugmentedImageDatabase *out_augmented_image_database);
+
+//                                image_segmentation_people)
 
 /// Stores the currently configured augmented face mode into @c
 /// *augmented_face_mode.
@@ -1382,6 +1399,7 @@ void ArConfig_setAugmentedFaceMode(const ArSession *session,
 /// To determine whether the configured ARCore camera supports auto focus, check
 /// ACAMERA_LENS_INFO_MINIMUM_FOCUS_DISTANCE, which is 0 for fixed-focus
 /// cameras.
+///
 void ArConfig_setFocusMode(const ArSession *session,
                            ArConfig *config,
                            ArFocusMode focus_mode);
@@ -1542,30 +1560,65 @@ AR_DEFINE_ENUM(ArCameraConfigDepthSensorUsage){
     AR_CAMERA_CONFIG_DEPTH_SENSOR_USAGE_DO_NOT_USE = 0x0002,
 };
 
-// Creates a camera config filters object with default values set for
-// backward compatibility. The caller can update the config filters it
-// wants and then get the matching camera configs.
+/// @addtogroup cameraconfigfilter
+/// @{
+
+/// Creates a camera config filter object.
+///
+/// @param[in]   session     The ARCore session
+/// @param[out]  out_filter  A pointer to an @c ArCameraConfigFilter* to receive
+///     the address of the newly allocated ArCameraConfigFilter
 void ArCameraConfigFilter_create(const ArSession *session,
                                  ArCameraConfigFilter **out_filter);
 
-/// Releases memory used by the provided camera config filters object.
+/// Releases memory used by the provided camera config filter object.
+///
+/// @param[in] filter The filter to release memory for.
 void ArCameraConfigFilter_destroy(ArCameraConfigFilter *filter);
 
-/// Sets the fps filter.
+/// Sets the desired framerates to allow.
+///
+/// @param[in] session     The ARCore session
+/// @param[in, out] filter The filter object to change
+/// @param[in] fps_filters A 32bit integer representing multiple
+///     @c ArCameraConfigTargetFps values, bitwise-or'd together
 void ArCameraConfigFilter_setTargetFps(const ArSession *session,
                                        ArCameraConfigFilter *filter,
                                        const uint32_t fps_filters);
 
-/// Gets the fps filter state.
+/// Gets the desired framerates to allow.
+///
+/// @param[in]  session         The ARCore session
+/// @param[in]  filter          The filter object to query
+/// @param[out] out_fps_filters To be filled in with the desired framerates
+///      allowed
 void ArCameraConfigFilter_getTargetFps(const ArSession *session,
                                        ArCameraConfigFilter *filter,
                                        uint32_t *out_fps_filters);
 
-/// Sets depth sensor usage filter. Default is to not filter.
+/// Sets the desired depth sensor usages to allow.
+///
+/// @param[in]      session                    The ARCore session
+/// @param[in, out] filter                     The filter object to change
+/// @param[in]      depth_sensor_usage_filters A 32bit integer representing
+///     multiple @c ArCameraConfigDepthSensorUsage values, bitwise-or'd
+///     together
 void ArCameraConfigFilter_setDepthSensorUsage(
     const ArSession *session,
     ArCameraConfigFilter *filter,
     uint32_t depth_sensor_usage_filters);
+
+/// Gets the desired depth sensor usages to allow.
+///
+/// @param[in]  session                The ARCore session
+/// @param[in]  filter                 The filter object to query
+/// @param[out] out_depth_sensor_usage To be filled in with the desired depth
+///     sensor usages allowed
+void ArCameraConfigFilter_getDepthSensorUsage(const ArSession *session,
+                                              ArCameraConfigFilter *filter,
+                                              uint32_t *out_depth_sensor_usage);
+
+/// @}
 
 // === ArSession methods ===
 
@@ -1601,13 +1654,14 @@ ArStatus ArSession_checkSupported(const ArSession *session,
     AR_DEPRECATED(
         "deprecated in release 1.2.0. Please see function documentation");
 
-/// Configures the session with the given config.
-/// Note: a session is always initially configured with the default config.
-/// This should be called if a configuration different than default is needed.
+/// Configures the session.
 ///
-/// The following configurations are not supported:
+/// A session initially has a default configuration. This should be called if a
+/// configuration different than default is needed.
 ///
-/// - When using the back-facing camera (default):
+/// The following configurations are unsupported:
+///
+/// - When using the (default) back-facing camera:
 ///   - #AR_AUGMENTED_FACE_MODE_MESH3D.
 /// - When using the front-facing (selfie) camera
 ///   (#AR_SESSION_FEATURE_FRONT_CAMERA):
@@ -1615,10 +1669,13 @@ ArStatus ArSession_checkSupported(const ArSession *session,
 ///   - #AR_CLOUD_ANCHOR_MODE_ENABLED.
 ///   - #AR_LIGHT_ESTIMATION_MODE_ENVIRONMENTAL_HDR.
 ///
+/// @param[in] session The ARCore session.
+/// @param[in] config The new configuration setting for the session.
+///
 /// @return #AR_SUCCESS or any of:
 /// - #AR_ERROR_FATAL
-/// - #AR_ERROR_UNSUPPORTED_CONFIGURATION If the configuration is not supported,
-///   see above restrictions
+/// - #AR_ERROR_UNSUPPORTED_CONFIGURATION if the configuration is not supported.
+///   See above restrictions.
 /// - #AR_ERROR_INTERNET_PERMISSION_NOT_GRANTED
 ArStatus ArSession_configure(ArSession *session, const ArConfig *config);
 
@@ -1662,10 +1719,28 @@ ArStatus ArSession_resume(ArSession *session);
 /// - #AR_ERROR_FATAL
 ArStatus ArSession_pause(ArSession *session);
 
+/// Sets the OpenGL texture names (ids) that will be assigned to incoming camera
+/// frames in sequence in a ring buffer. The textures must be bound to the @c
+/// GL_TEXTURE_EXTERNAL_OES target for use. Shaders accessing these textures
+/// must use a @c samplerExternalOES sampler.
+///
+/// Passing multiple textures allows for a multithreaded rendering pipeline,
+/// unlike @c ArSession_setCameraTextureName.
+///
+/// Note: this function doesn't fail. If given invalid input, it logs an error
+/// without setting the texture names.
+///
+/// @param[in] session The ARCore session
+/// @param[in] number_of_textures The number of textures being passed. This
+/// must always be at least 1.
+/// @param[in] texture_ids Pointer to the array of textures names (ids)
+void ArSession_setCameraTextureNames(ArSession *session,
+                                     int32_t number_of_textures,
+                                     const uint32_t *texture_ids);
+
 /// Sets the OpenGL texture name (id) that will allow GPU access to the camera
-/// image. The provided ID should have been created with @c glGenTextures(). The
-/// resulting texture must be bound to the @c GL_TEXTURE_EXTERNAL_OES target for
-/// use. Shaders accessing this texture must use a @c samplerExternalOES
+/// image. The texture must be bound to the @c GL_TEXTURE_EXTERNAL_OES target
+/// for use. Shaders accessing this texture must use a @c samplerExternalOES
 /// sampler. See sample code for an example.
 void ArSession_setCameraTextureName(ArSession *session, uint32_t texture_id);
 
@@ -1763,7 +1838,7 @@ void ArSession_getAllTrackables(const ArSession *session,
                                 ArTrackableType filter_type,
                                 ArTrackableList *out_trackable_list);
 
-/// This will create a new cloud anchor using pose and other metadata from
+/// This will create a new Cloud Anchor using the pose and other metadata from
 /// @c anchor.
 ///
 /// If the function returns #AR_SUCCESS, the cloud state of @c out_cloud_anchor
@@ -1775,7 +1850,7 @@ void ArSession_getAllTrackables(const ArSession *session,
 ///
 /// @param[in]    session          The ARCore session
 /// @param[in]    anchor           The anchor to be hosted
-/// @param[inout] out_cloud_anchor The new cloud anchor
+/// @param[inout] out_cloud_anchor The new Cloud Anchor
 /// @return #AR_SUCCESS or any of:
 /// - #AR_ERROR_NOT_TRACKING
 /// - #AR_ERROR_SESSION_PAUSED
@@ -1786,8 +1861,11 @@ ArStatus ArSession_hostAndAcquireNewCloudAnchor(ArSession *session,
                                                 const ArAnchor *anchor,
                                                 ArAnchor **out_cloud_anchor);
 
-/// This will create a new cloud anchor, and schedule a resolving task to
-/// resolve the anchor's pose using the given cloud anchor ID.
+/// This will create a new Cloud Anchor, and schedule a task to resolve the
+/// anchor's pose using the given Cloud Anchor ID. You don't need to
+/// wait for a call to resolve a Cloud Anchor to complete before initiating
+/// another call. A session can be resolving up to 20 Cloud Anchors at a given
+/// time.
 ///
 /// If this function returns #AR_SUCCESS, the cloud state of @c out_cloud_anchor
 /// will be #AR_CLOUD_ANCHOR_STATE_TASK_IN_PROGRESS, and its tracking state will
@@ -1799,7 +1877,7 @@ ArStatus ArSession_hostAndAcquireNewCloudAnchor(ArSession *session,
 ///
 /// @param[in]    session          The ARCore session
 /// @param[in]    cloud_anchor_id  The cloud ID of the anchor to be resolved
-/// @param[inout] out_cloud_anchor The new cloud anchor
+/// @param[inout] out_cloud_anchor The new Cloud Anchor
 /// @return #AR_SUCCESS or any of:
 /// - #AR_ERROR_NOT_TRACKING
 /// - #AR_ERROR_SESSION_PAUSED
@@ -1845,6 +1923,8 @@ ArStatus ArSession_resolveAndAcquireNewCloudAnchor(ArSession *session,
 /// @deprecated in release 1.11.0. Please use instead: @code
 /// void ArSession_getSupportedCameraConfigsWithFilter(const ArSession* session,
 /// const ArCameraConfigFilter* filter, ArCameraConfigList* list); @endcode
+// TODO(b/146903940): Change ArSession_getSupportedCameraConfigs to return
+// ArStatus.
 void ArSession_getSupportedCameraConfigs(const ArSession *session,
                                          ArCameraConfigList *list)
     AR_DEPRECATED(
@@ -1893,6 +1973,13 @@ void ArSession_getCameraConfig(const ArSession *session,
 /// capabilities. Overly restrictive filtering can result in the returned list
 /// being empty on one or more devices.
 ///
+/// Beginning with ARCore SDK 1.15.0, some devices support additional camera
+/// configs with lower GPU texture resolutions than the device's default GPU
+/// texture resolution. These additional resolutions are only returned when the
+/// filter is not a @c nullptr. See the ARCore supported devices
+/// (https://developers.google.com/ar/discover/supported-devices) page for
+/// an up to date list of supported devices.
+///
 /// Element 0 will contain the camera config that best matches the filter
 /// settings, according to the following priority:
 ///
@@ -1907,6 +1994,8 @@ void ArSession_getCameraConfig(const ArSession *session,
 /// Can be called at any time.
 ///
 /// @return list of supported camera configs.
+// TODO(b/146903940): Change ArSession_getSupportedCameraConfigsWithFilter to
+// return ArStatus.
 void ArSession_getSupportedCameraConfigsWithFilter(
     const ArSession *session,
     const ArCameraConfigFilter *filter,
@@ -2424,6 +2513,18 @@ void ArFrame_getUpdatedTrackables(const ArSession *session,
                                   ArTrackableType filter_type,
                                   ArTrackableList *out_trackable_list);
 
+/// Returns the OpenGL ES camera texture name (id) associated with this frame.
+/// This is guaranteed to be one of the texture names previously set via
+/// #ArSession_setCameraTextureNames or #ArSession_setCameraTextureName. Texture
+/// names (ids) are returned in a round robin fashion in sequential frames.
+///
+/// @param[in]   session         The ARCore session.
+/// @param[in]   frame           The current frame.
+/// @param[out]  out_texture_id  Where to store the texture name (id).
+void ArFrame_getCameraTextureName(const ArSession *session,
+                                  const ArFrame *frame,
+                                  uint32_t *out_texture_id);
+
 // === Scene Structure methods ===
 
 /// @}
@@ -2850,7 +2951,7 @@ void ArAnchor_detach(ArSession *session, ArAnchor *anchor);
 /// This method may safely be called with @c NULL - it will do nothing.
 void ArAnchor_release(ArAnchor *anchor);
 
-/// Acquires the cloud anchor ID of the anchor. The ID acquired is an ASCII
+/// Acquires the Cloud Anchor ID of the anchor. The ID acquired is an ASCII
 /// null-terminated string. The acquired ID must be released after use by the
 /// @c ArString_release function. For anchors with cloud state
 /// #AR_CLOUD_ANCHOR_STATE_NONE or #AR_CLOUD_ANCHOR_STATE_TASK_IN_PROGRESS, this
@@ -2863,7 +2964,7 @@ void ArAnchor_acquireCloudAnchorId(ArSession *session,
                                    ArAnchor *anchor,
                                    char **out_cloud_anchor_id);
 
-/// Gets the current cloud anchor state of the anchor. This state is guaranteed
+/// Gets the current Cloud Anchor state of the anchor. This state is guaranteed
 /// not to change until update() is called.
 ///
 /// @param[in]    session   The ARCore session.

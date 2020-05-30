@@ -3,10 +3,6 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 use std::os::raw::c_void;
 
-use android_injected_glue::AssetError;
-use android_injected_glue::Event;
-use android_injected_glue::add_sender;
-use android_injected_glue::load_asset;
 use android_injected_glue::ffi::AASSET_MODE_BUFFER;
 use android_injected_glue::ffi::AAsset;
 use android_injected_glue::ffi::AAsset_read;

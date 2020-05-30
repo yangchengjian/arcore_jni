@@ -2,6 +2,7 @@
 extern crate android_injected_glue;
 extern crate glm;
 extern crate lodepng;
+extern crate ndk_sys;
 extern crate rgb;
 extern crate sparkle;
 
@@ -13,20 +14,18 @@ mod augmented_face;
 mod augmented_image;
 mod jni_interface;
 pub mod log;
+mod process_image;
 mod renderer_background;
 mod renderer_plane;
 mod renderer_point_cloud;
 mod util;
 
-
-use std::collections::HashMap;
-
-use sparkle::gl;
+use self::ffi_arcore::*;
 
 use android_injected_glue::ffi::JNIEnv;
 use android_injected_glue::ffi::jobject;
-
-use self::ffi_arcore::*;
+use std::collections::HashMap;
+use sparkle::gl;
 
 const K_MAX_NUMBER_OF_ANDROIDS_TO_RENDER: usize = 20;
 
@@ -48,6 +47,7 @@ pub struct ColoredAnchor {
 pub struct ArCore {
     ar_session: *mut ArSession,
     ar_frame: *mut ArFrame,
+    loop_num: i32,
 
     width_: i32,
     height_: i32,
@@ -117,6 +117,7 @@ impl ArCore {
             ArCore {
                 ar_session: out_session_pointer,
                 ar_frame: out_frame,
+                loop_num: 0,
 
                 width_: 1,
                 height_: 1,
@@ -243,8 +244,12 @@ impl ArCore {
 
                 //::augmented_face::track_faces(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.faces_obj_map_);
 
+                if self.loop_num % 10 == 0 {
+                    log::d(&format!("arcore::lib::::on_draw loop_num = {}", &self.loop_num));
+                }
             }
         }
+        self.loop_num += 1;
     }
 
     pub fn on_touched(&mut self, x: f32, y: f32) -> i32 {
@@ -549,5 +554,58 @@ fn get_transform_matrix_from_anchor(session: *mut ArSession, anchor: *mut ArAnch
         ArPose_create(session as *const ArSession, 0 as *const _, &mut out_pose);
         ArAnchor_getPose(session as *const ArSession, anchor as *const ArAnchor, out_pose as *mut ArPose);
         ArPose_getMatrix(session as *const ArSession, out_pose as *const ArPose, out_model_mat);
+    }
+}
+
+fn get_ar_image_from_camera(session: *const ArSession, frame: *const ArFrame) -> *mut ArImage {
+    unsafe {
+        let mut ar_image: *mut ArImage = ::std::ptr::null_mut();
+        let ar_status: ArStatus = ArFrame_acquireCameraImage(session as *mut ArSession, frame as *mut ArFrame, &mut ar_image);
+        if ar_status != AR_SUCCESS as i32 {
+            log::d(&format!("arcore::lib::get_ar_image_from_camera ar_status : {:?}", &ar_status));
+        }
+        ar_image
+    }
+}
+
+fn get_a_image(ar_image: *const ArImage) -> *const ::ndk_sys::AImage {
+    unsafe {
+        let mut out_ndk_image: *const AImage = ::std::ptr::null_mut();
+        ArImage_getNdkImage(ar_image, &mut out_ndk_image as *mut *const AImage);
+        let a_image = ::std::mem::transmute::<*const AImage, *mut ::ndk_sys::AImage>(out_ndk_image); // transfor arcore AImage to NDK AImage
+        a_image
+    }
+}
+
+// java.lang.UnsatisfiedLinkError: dlopen failed: cannot locate symbol "ArImage_getFormat"
+//fn get_ar_image_format(session: *const ArSession, ar_image: *const ArImage) -> i32 {
+//    unsafe {
+//        let mut height = 0;
+//        ArImage_getFormat(session, ar_image, &mut height as *mut i32);
+//        height
+//    }
+//}
+
+fn get_ar_image_height(session: *const ArSession, ar_image: *const ArImage) -> i32 {
+    unsafe {
+        let mut height = 0;
+        ArImage_getHeight(session, ar_image, &mut height as *mut i32);
+        height
+    }
+}
+
+fn get_ar_image_width(session: *const ArSession, ar_image: *const ArImage) -> i32 {
+    unsafe {
+        let mut width = 0;
+        ArImage_getWidth(session, ar_image, &mut width as *mut i32);
+        width
+    }
+}
+
+fn get_ar_image_timestamp(session: *const ArSession, ar_image: *const ArImage) -> i64 {
+    unsafe {
+        let mut timestamp = 0;
+        ArImage_getTimestamp(session, ar_image, &mut timestamp as *mut i64);
+        timestamp
     }
 }

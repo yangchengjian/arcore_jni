@@ -10,6 +10,7 @@ bindgen = "0.51.1"
 [dependencies]
 android_injected_glue = "0.2"
 libc = "0.2"
+ndk-sys = {git = "https://github.com/rust-windowing/android-ndk-rs.git", branch = "master", features = ["bitmap", "media"]}
 sparkle = "0.1.16"
 serde = "1.0"
 lodepng = "2.5.0"
