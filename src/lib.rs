@@ -14,7 +14,6 @@ mod augmented_face;
 mod augmented_image;
 mod jni_interface;
 pub mod log;
-mod process_image;
 mod renderer_background;
 mod renderer_plane;
 mod renderer_point_cloud;
