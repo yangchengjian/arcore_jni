@@ -47,7 +47,12 @@ pub struct ColoredAnchor {
 pub struct ArCore {
     ar_session: *mut ArSession,
     ar_frame: *mut ArFrame,
-    loop_num: i32,
+
+    show_plane: bool,
+    show_point: bool,
+    show_image: bool,
+    show_faces: bool,
+    shop_rate: i32,
 
     width_: i32,
     height_: i32,
@@ -56,6 +61,8 @@ pub struct ArCore {
     renderer_background_: Option<renderer_background::BackgroundRenderer>,
     renderer_point_cloud_: Option<renderer_point_cloud::PointCloudRenderer>,
     renderer_plane_: Option<renderer_plane::PlaneRenderer>,
+
+    background_texture_id: gl::types::GLuint,
 
     plane_obj_map_: HashMap<i32, ColoredAnchor>,
     point_obj_map_: HashMap<i32, ColoredAnchor>,
@@ -117,7 +124,12 @@ impl ArCore {
             ArCore {
                 ar_session: out_session_pointer,
                 ar_frame: out_frame,
-                loop_num: 0,
+
+                show_plane: false,
+                show_point: false,
+                show_image: false,
+                show_faces: false,
+                shop_rate: 0,
 
                 width_: 1,
                 height_: 1,
@@ -126,6 +138,8 @@ impl ArCore {
                 renderer_background_: None,
                 renderer_plane_: None,
                 renderer_point_cloud_: None,
+
+                background_texture_id: 0,
 
                 plane_obj_map_: HashMap::new(),
                 point_obj_map_: HashMap::new(),
@@ -208,12 +222,20 @@ impl ArCore {
         }
     }
 
+    pub fn on_config_changed(&mut self, show_plane: bool, show_point: bool, show_image: bool, show_faces: bool) {
+        log::i(&format!("arcore::lib::on_config_changed show_plane = {}, show_point = {}, show_image = {}, show_faces = {}", show_plane, show_point, show_image, show_faces));
+        self.show_plane = show_plane;
+        self.show_point = show_point;
+        self.show_image = show_image;
+        self.show_faces = show_faces;
+    }
+
     pub fn on_draw(&mut self, gl: &gl::Gl) {
         log::i("arcore::lib::on_draw");
 
         unsafe {
-            let mut texture_id = self.clone().renderer_background_.unwrap().get_texture_id();
-            ArSession_setCameraTextureName(self.ar_session, texture_id);
+//            let mut texture_id = self.clone().renderer_background_.unwrap().get_texture_id();
+            ArSession_setCameraTextureName(self.ar_session, self.background_texture_id);
 
             let mut ar_status_update: ArStatus = ArSession_update(self.ar_session, self.ar_frame);
 
@@ -236,20 +258,28 @@ impl ArCore {
 
                 self.render_background(gl);
 
-                self.render_point_cloud(gl, p * v);
+                if self.show_plane {
+                    self.render_planes(gl);
+                }
 
-//                self.render_planes(gl);
+                if self.show_point {
+                    self.render_point_cloud(gl, p * v);
+                }
 
-                ::augmented_image::track_images(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.image_obj_map_);
+                if self.show_image {
+                    ::augmented_image::track_images(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.image_obj_map_);
+                }
 
-                ::augmented_face::track_faces(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.faces_obj_map_);
+                if self.show_faces {
+                    ::augmented_face::track_faces(self.ar_session as *const ArSession, self.ar_frame as *const ArFrame, &mut self.faces_obj_map_);
+                }
 
-                if self.loop_num % 10 == 0 {
-                    log::d(&format!("arcore::lib::::on_draw loop_num = {}", &self.loop_num));
+                if self.shop_rate % 10 == 0 {
+                    log::d(&format!("arcore::lib::::on_draw shop_rate = {}", &self.shop_rate));
                 }
             }
         }
-        self.loop_num += 1;
+        self.shop_rate += 1;
     }
 
     pub fn on_touched(&mut self, x: f32, y: f32) -> i32 {
@@ -423,6 +453,7 @@ impl ArCore {
         log::i("arcore::lib::init_renderers");
 
         let bgr = ::renderer_background::BackgroundRenderer::new(gl);
+        self.background_texture_id = bgr.get_texture_id();
         self.renderer_background_ = Some(bgr);
 
         let plr = ::renderer_plane::PlaneRenderer::new(gl);
